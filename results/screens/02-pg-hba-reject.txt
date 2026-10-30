@@ -1,0 +1,5 @@
+aquila@aquila-brnhxx:~$ ./scripts/mode.sh audit >/dev/null; echo '--- webapp с ftp (не web) при отключённом ACL ---'; docker exec -e PGPASSWORD=Webapp2026stand gis-ftp psql -h 192.168.200.10 -U webapp -d site -c 'SELECT 1;'; ./scripts/mode.sh protect >/dev/null; echo '--- режим protect восстановлен ---'
+--- webapp с ftp (не web) при отключённом ACL ---
+psql: error: connection to server at "192.168.200.10", port 5432 failed: FATAL:  pg_hba.conf rejects connection for host "192.168.100.11", user "webapp", database "site", SSL encryption
+connection to server at "192.168.200.10", port 5432 failed: FATAL:  pg_hba.conf rejects connection for host "192.168.100.11", user "webapp", database "site", no encryption
+--- режим protect восстановлен ---

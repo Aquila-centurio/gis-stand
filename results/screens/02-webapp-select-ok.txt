@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ docker exec gis-web php -r '$p=getenv("WEBAPP_DB_PASSWORD"); $c=pg_connect("host=192.168.200.10 port=5432 dbname=site user=webapp password=$p connect_timeout=3"); $r=pg_query($c,"SELECT count(*) FROM news"); echo "news count: ".pg_fetch_result($r,0,0).PHP_EOL;'
+news count: 3

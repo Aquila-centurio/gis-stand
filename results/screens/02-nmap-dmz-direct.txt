@@ -1,0 +1,19 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker nmap -sT -Pn -T4 -p 21,443,5432 192.168.100.10 192.168.100.11
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-30 08:06 UTC
+Nmap scan report for 192.168.100.10
+Host is up.
+
+PORT     STATE    SERVICE
+21/tcp   filtered ftp
+443/tcp  filtered https
+5432/tcp filtered postgresql
+
+Nmap scan report for 192.168.100.11
+Host is up.
+
+PORT     STATE    SERVICE
+21/tcp   filtered ftp
+443/tcp  filtered https
+5432/tcp filtered postgresql
+
+Nmap done: 2 IP addresses (2 hosts up) scanned in 15.03 seconds

@@ -1,0 +1,3 @@
+aquila@aquila-brnhxx:~$ docker exec gis-db curl -sS -m5 --ftp-pasv 'ftp://ftpbackup:Backup2026stand@192.168.100.11/'
+-rw-r--r--    1 1000     1000         6279 Oct 30 08:04 site-20261030-080442.sql
+-rw-r--r--    1 1000     1000         6279 Oct 30 08:06 site-20261030-080612.sql

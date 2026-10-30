@@ -1,0 +1,13 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker nmap -sT -Pn -T4 -p 21,22,80,443,5432 198.51.100.1
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-30 08:05 UTC
+Nmap scan report for gis-fw-ext.gis_ext (198.51.100.1)
+Host is up (0.00025s latency).
+
+PORT     STATE  SERVICE
+21/tcp   closed ftp
+22/tcp   closed ssh
+80/tcp   open   http
+443/tcp  open   https
+5432/tcp closed postgresql
+
+Nmap done: 1 IP address (1 host up) scanned in 0.02 seconds

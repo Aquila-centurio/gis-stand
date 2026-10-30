@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-web apache2 -v; docker exec gis-web php -v | head -2; docker exec gis-db su postgres -c 'psql --version'; docker exec gis-ftp dpkg -l vsftpd | tail -1
+Server version: Apache/2.4.69 (Debian)
+Server built:   2026-10-01T16:54:08
+PHP 8.4.27 (cli) (built: Oct 21 2026 07:53:46) (NTS)
+Copyright (c) The PHP Group
+psql (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)
+ii  vsftpd         3.0.5-0.2    amd64        lightweight, efficient FTP server written for security

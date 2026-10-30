@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ docker exec gis-db backup.sh
+Бэкап загружен на ftp: site-20261030-080612.sql

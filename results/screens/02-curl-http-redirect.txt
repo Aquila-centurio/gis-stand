@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client curl -sS -I -m5 http://198.51.100.1/
+HTTP/1.1 301 Moved Permanently
+Date: Fri, 30 Oct 2026 08:05:40 GMT
+Server: Apache/2.4.69 (Debian)
+Location: https://198.51.100.1/
+Content-Type: text/html; charset=iso-8859-1
+

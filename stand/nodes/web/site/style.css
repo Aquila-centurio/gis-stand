@@ -1,0 +1,8 @@
+body { font-family: sans-serif; margin: 2em auto; max-width: 760px; color: #222; }
+header { border-bottom: 2px solid #1a3b6e; margin-bottom: 1.5em; }
+header h1 { color: #1a3b6e; font-size: 1.4em; }
+nav a { margin-right: 1.2em; color: #1a3b6e; text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+article { margin-bottom: 1.4em; border-bottom: 1px solid #ddd; padding-bottom: 1em; }
+.date { color: #777; font-size: 0.9em; }
+footer { margin-top: 2em; color: #999; font-size: 0.85em; }

@@ -1,0 +1,21 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client curl -k -sS -m5 https://198.51.100.1/news.php
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Новости — Счётная палата РФ (учебный стенд)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<h1>Интернет-сайт Счётной палаты РФ — учебный стенд ГИС «АУО»</h1>
+<nav>
+<a href="index.php">Главная</a>
+<a href="news.php">Новости</a>
+<a href="documents.php">Документы</a>
+<a href="search.php">Поиск</a>
+</nav>
+</header>
+<h2>Новости</h2>
+<article><h3>Плановая проверка завершена</h3><p class="date">2026-03-10</p><p>Завершена плановая проверка использования бюджетных средств в 2025 году.</p></article><article><h3>Обновлён состав коллегии</h3><p class="date">2026-02-03</p><p>Информация об изменениях в составе коллегии Счётной палаты РФ.</p></article><article><h3>Счётная палата опубликовала отчёт за 2025 год</h3><p class="date">2026-01-15</p><p>Итоговый отчёт о результатах контрольных мероприятий размещён в разделе «Документы».</p></article></body>
+</html>

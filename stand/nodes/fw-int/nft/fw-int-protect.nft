@@ -6,6 +6,7 @@ table inet filter {
     counter c_int_vpn_to_arm {}
     counter c_int_arm_to_web {}
     counter c_int_arm_to_ftp {}
+    counter c_int_db_to_ftp {}
     counter c_int_fwd_drop {}
 
     chain forward {
@@ -18,7 +19,9 @@ table inet filter {
         ip saddr 10.8.0.0/24 ip daddr 192.168.200.31 tcp dport 22 counter name c_int_vpn_to_arm accept
         # arm1 -> web / ftp наружу из intra
         ip saddr 192.168.200.31 ip daddr 192.168.100.10 tcp dport { 80, 443 } counter name c_int_arm_to_web accept
-        ip saddr 192.168.200.31 ip daddr 192.168.100.11 tcp dport 21 counter name c_int_arm_to_ftp accept
+        ip saddr 192.168.200.31 ip daddr 192.168.100.11 tcp dport { 21, 21100-21110 } counter name c_int_arm_to_ftp accept
+        # db -> ftp: backup.sh грузит pg_dump на ftp (control + пассивный диапазон данных)
+        ip saddr 192.168.200.10 ip daddr 192.168.100.11 tcp dport { 21, 21100-21110 } counter name c_int_db_to_ftp accept
         counter name c_int_fwd_drop drop
     }
 }

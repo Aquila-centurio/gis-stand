@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ docker exec gis-db curl -sS -m5 ftp://192.168.100.11/
+curl: (67) Access denied: 530
