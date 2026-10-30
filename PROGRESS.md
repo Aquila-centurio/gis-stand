@@ -6,7 +6,7 @@
 - [x] 01 — сети, роутеры, межсетевые экраны (`prompts/01-network-fw.md`)
 - [x] 02 — сервисы ДМЗ и БД: web, FTP, PostgreSQL (`prompts/02-dmz-services.md`)
 - [x] 03 — IDS/IPS на шлюзе ДМЗ (`prompts/03-ids.md`)
-- [ ] 04 — VPN WireGuard и удалённый доступ (`prompts/04-vpn.md`)
+- [x] 04 — VPN WireGuard и удалённый доступ (`prompts/04-vpn.md`)
 - [ ] 05 — домен, АРМ, RADIUS+Squid, аналоги Secret Net (`prompts/05-domain-arm-radius.md`)
 - [ ] 06 — итоговые проверки, сводка, демо для защиты (`prompts/06-verify-demo.md`)
 
@@ -19,8 +19,20 @@
 - **db** (intra .10): PostgreSQL 17, база `site` (news/documents/internal_notes), роль `webapp` только с SELECT на news/documents и только с адреса web (`pg_hba.conf`).
 - **ftp** (dmz .11): vsftpd, пользователь `ftpbackup` (chroot, без анонимного доступа), пассивные порты 21100-21110. `backup.sh` на db — `pg_dump` → загрузка на ftp.
 - **gw-dmz**: кроме МЭ (nftables, с этапа 01) теперь ещё Suricata 7.0.10 (IDS, af-packet на transit+dmz), 9 своих правил (`stand/nodes/gw-dmz/suricata/local.rules`): ICMP, успешное HTTPS-подключение, XSS, SQLi (2 варианта), сканирование портов, FTP-логин. Логи на хосте в `stand/logs/gw-dmz/` (`fast.log`, `eve.json`, не в git). IPS (nftables queue + NFQUEUE) не делали — не хватило времени, см. `results/03-ids.md`.
-- dc, arm1, radius, vpn — пустые заглушки (сервисы появятся в следующих этапах).
+- dc, radius — пустые заглушки (сервисы появятся в этапе 05).
 - `scripts/shot-web.sh` — скриншот страницы из `client` headless-хромиумом.
+- **vpn** (transit .3): WireGuard-сервер wg0 (10.8.0.1/24, udp 51820), ключи в `stand/secrets/wg/`
+  (генерируются автоматически при первом старте контейнера, не в git). Свой nftables: принимает
+  только udp/51820 и established/related, ssh/icmp к самому vpn закрыты; forward — accept (NAT
+  нет, чтобы на fw-int был виден настоящий адрес клиента 10.8.0.x).
+- **client** (ext .10, в туннеле 10.8.0.2/32): конфиги WireGuard готовятся сразу при старте
+  (`wg0.conf` — рабочий, `wg0-badkey.conf` — незарегистрированный ключ), но интерфейс не
+  поднимается автоматически — `wg-quick up/down wg0` делается вручную для проверки до/после.
+- **arm1** (intra .31): временная заглушка с sshd (openssh-server, пользователь `armuser`,
+  пароль `ARM_SSH_PASSWORD`) — цель для проверки доступа VPN-клиента по политике
+  (10.8.0.0/24 → arm1 tcp 22, остальное в intra и в dmz запрещено). Полноценный АРМ — этап 05.
+- Правило `fw-int` на VPN-клиентов и DNAT на `fw-ext` для udp/51820 были готовы ещё с этапа 01,
+  на этапе 04 только проверены.
 
 Сейчас стенд в режиме `protect` (по умолчанию).
 
@@ -29,7 +41,7 @@
 видимость запроса (payload-based правила), использовать `http://` (порт 80, запрос виден в открытом
 виде ещё до редиректа), а не `https://`. Подробности — `results/03-ids.md`, «Отступления», п.1-2.
 
-Все проверки из `prompts/01-network-fw.md`, `prompts/02-dmz-services.md`, `prompts/03-ids.md` пройдены, детали и скрины — `results/01-network-fw.md`, `results/02-dmz-services.md`, `results/03-ids.md`, `results/screens/01-*`, `results/screens/02-*`, `results/screens/03-*`.
+Все проверки из `prompts/01-network-fw.md`, `prompts/02-dmz-services.md`, `prompts/03-ids.md`, `prompts/04-vpn.md` пройдены, детали и скрины — `results/01-network-fw.md`, `results/02-dmz-services.md`, `results/03-ids.md`, `results/04-vpn.md`, `results/screens/01-*` … `results/screens/04-*`.
 
 ## Известные проблемы и обходы
 - Docker для сетей с `internal: true` сам ставит на хосте (в `DOCKER-ISOLATION-STAGE-1`, не трогая `/etc/nftables.conf`) правило, блокирующее пересылку пакета с чужим для данного bridge адресом назначения — даже если сосед по bridge является нашим контейнером-роутером. Из-за этого обошлись без `internal: true` (см. «Отступления»). Если при `docker compose up` на новой машине снова появится 100% потерь между зонами при живых маршрутах и ARP — проверить `docker network inspect gis_<сеть> --format '{{.Internal}}'`, должно быть `false`.
@@ -50,6 +62,20 @@
 
 ## Журнал (новые записи сверху)
 Формат записи: `ДАТА ВРЕМЯ — этап NN — что сделано / что сломалось / что дальше`
+
+2026-10-30 — этап 04 — WireGuard-сервер на vpn (wg0, 10.8.0.1/24, udp 51820), ключи
+генерируются автоматически в stand/secrets/wg при первом запуске (не в git). На client готовятся
+конфиги wg0.conf и wg0-badkey.conf, туннель поднимается вручную (wg-quick up/down) для проверки
+до/после. На arm1 — заглушка с sshd (пользователь armuser) как цель для проверки политики
+VPN-клиент → arm1:22 (правило на fw-int и DNAT на fw-ext были готовы ещё с этапа 01). На vpn
+добавлен nftables: принимает только udp/51820, остальное к самому vpn закрыто, NAT не делали —
+на fw-int виден настоящий адрес клиента в туннеле. Проверили: до туннеля доступа нет, после —
+разрешён только arm1:22 (db:5432 и dc — нет), wg show показывает handshake/transfer без
+приватных ключей, tcpdump подтвердил, что снаружи (vpn/transit) только UDP/51820, а внутри
+(fw-int/intra) трафик уже расшифрован (виден SSH-банер в открытом виде), отключение туннеля
+убирает доступ, клиент с незарегистрированным ключом (bad-client) не получает handshake.
+Все обязательные проверки из prompts/04-vpn.md — PASS, результаты в results/04-vpn.md. Дальше:
+этап 05 (домен, АРМ, RADIUS+Squid, аналоги Secret Net).
 
 2026-10-30 — этап 03 — Suricata (IDS, af-packet на transit+dmz) поднята на gw-dmz, 9 своих правил
 (ICMP, успешное HTTPS-подключение, XSS, 2×SQLi, сканирование портов, FTP-логин). Логи fast.log/eve.json

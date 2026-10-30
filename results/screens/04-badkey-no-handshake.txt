@@ -1,0 +1,13 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client sh -c 'wg show wg0-badkey; nc -vz -w3 192.168.200.31 22; echo EXIT:$?'
+interface: wg0-badkey
+  public key: otZfXmHF4GGlYRooNX8PMu0qS0eQSvpicANBnY/R5mc=
+  private key: (hidden)
+  listening port: 42769
+
+peer: imXbY4ehUsIks0S+1Zr/LUIMLocgqxuJMtFMwzVulnE=
+  endpoint: 198.51.100.1:51820
+  allowed ips: 192.168.200.0/24, 10.8.0.0/24
+  transfer: 0 B received, 296 B sent
+  persistent keepalive: every 25 seconds
+nc: connect to 192.168.200.31 port 22 (tcp) timed out: Operation now in progress
+EXIT:1

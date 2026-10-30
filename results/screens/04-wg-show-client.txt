@@ -1,0 +1,12 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client wg show
+interface: wg0
+  public key: PrhYpuDYWzZW0l+EtFtBcUIcaNxFRc5wHMMHrYT3Nw0=
+  private key: (hidden)
+  listening port: 46580
+
+peer: imXbY4ehUsIks0S+1Zr/LUIMLocgqxuJMtFMwzVulnE=
+  endpoint: 198.51.100.1:51820
+  allowed ips: 192.168.200.0/24, 10.8.0.0/24
+  latest handshake: 14 seconds ago
+  transfer: 412 B received, 676 B sent
+  persistent keepalive: every 25 seconds

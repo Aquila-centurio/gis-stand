@@ -1,0 +1,4 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client sh -c 'wg-quick down wg0 2>&1; nc -vz -w3 192.168.200.31 22; echo EXIT:$?'
+[#] ip link delete dev wg0
+nc: connect to 192.168.200.31 port 22 (tcp) timed out: Operation now in progress
+EXIT:1

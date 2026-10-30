@@ -1,0 +1,19 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-int tcpdump -n -i eth0 -c 15 tcp port 22
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on eth0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+09:14:04.283028 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [S], seq 2264425123, win 64860, length 0
+09:14:04.283079 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [S.], seq 969142395, ack 2264425124, win 65160, length 0
+09:14:04.283489 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [.], ack 1, win 507, length 0
+09:14:04.283793 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [P.], seq 1:42, ack 1, length 41: SSH: SSH-2.0-OpenSSH_10.0p2 Debian-7+deb13u4
+09:14:04.283814 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [.], ack 42, win 509, length 0
+09:14:04.292815 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [P.], seq 1:42, ack 42, length 41: SSH: SSH-2.0-OpenSSH_10.0p2 Debian-7+deb13u4
+09:14:04.293222 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [.], ack 42, win 507, length 0
+09:14:04.293975 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [.], seq 42:1410, ack 42, length 1368
+09:14:04.294021 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [P.], seq 1410:1610, ack 42, length 200
+09:14:04.294054 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [.], ack 1610, win 545, length 0
+09:14:04.301020 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [P.], seq 42:1082, ack 1610, length 1040
+09:14:04.303708 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [P.], seq 1610:2842, ack 1082, length 1232
+09:14:04.309613 IP 192.168.200.31.22 > 10.8.0.2.35702: Flags [P.], seq 1082:2662, ack 2842, length 1580
+09:14:04.310037 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [.], ack 2662, win 545, length 0
+09:14:04.315552 IP 10.8.0.2.35702 > 192.168.200.31.22: Flags [P.], seq 2842:2926, ack 2662, length 84
+15 packets captured — реальный адрес клиента (10.8.0.2) и строка SSH-2.0-OpenSSH видны открыто

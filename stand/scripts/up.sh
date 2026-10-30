@@ -13,6 +13,7 @@ if [[ ! -f "$SECRETS_ENV" ]]; then
     cat > "$SECRETS_ENV" <<'EOF'
 WEBAPP_DB_PASSWORD=Webapp2026stand
 FTP_BACKUP_PASSWORD=Backup2026stand
+ARM_SSH_PASSWORD=Arm2026stand
 EOF
     echo "Создан $SECRETS_ENV с учебными паролями по умолчанию."
 fi

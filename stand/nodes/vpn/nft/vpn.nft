@@ -1,0 +1,27 @@
+flush ruleset
+
+# Ограничение на сам узел vpn: снаружи (transit) принимать только WireGuard (udp 51820) и
+# ответы на собственные соединения. ssh и всё остальное к vpn закрыто — это не зависит от
+# режима protect/audit (переключается только на fw-ext/gw-dmz/fw-int, см. stand/scripts/mode.sh),
+# это отдельная фиксированная мера защиты самого VPN-сервера.
+# forward (wg0 <-> transit) оставлен accept: фактическая фильтрация трафика VPN-клиентов
+# в intra/dmz делается на fw-int и gw-dmz (политика по 10.8.0.0/24), здесь NAT не делаем
+# (только форвардинг), чтобы в их логах/счётчиках был виден настоящий адрес клиента.
+table inet filter {
+    counter c_vpn_in_wg {}
+    counter c_vpn_in_drop {}
+    counter c_vpn_fwd {}
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iif "lo" accept
+        ct state established,related accept
+        udp dport 51820 counter name c_vpn_in_wg accept
+        counter name c_vpn_in_drop drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+        counter name c_vpn_fwd
+    }
+}

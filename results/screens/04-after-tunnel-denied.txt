@@ -1,0 +1,5 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client sh -c 'nc -vz -w3 192.168.200.10 5432; echo EXIT:$?; nc -vz -w3 192.168.200.20 445; echo EXIT:$?'
+nc: connect to 192.168.200.10 port 5432 (tcp) timed out: Operation now in progress
+EXIT:1
+nc: connect to 192.168.200.20 port 445 (tcp) timed out: Operation now in progress
+EXIT:1

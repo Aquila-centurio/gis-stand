@@ -73,6 +73,8 @@ services:
     cap_add: [NET_ADMIN]
     sysctls:
       net.ipv4.ip_forward: 1
+    volumes:
+      - ./secrets/wg:/secrets/wg
     networks:
       transit:
         ipv4_address: 192.168.50.3
@@ -150,6 +152,7 @@ services:
     container_name: gis-arm1
     hostname: arm1
     cap_add: [NET_ADMIN]
+    env_file: ./secrets/stand.env
     networks:
       intra:
         ipv4_address: 192.168.200.31
@@ -160,6 +163,8 @@ services:
     container_name: gis-client
     hostname: client
     cap_add: [NET_ADMIN]
+    volumes:
+      - ./secrets/wg:/secrets/wg
     networks:
       ext:
         ipv4_address: 198.51.100.10

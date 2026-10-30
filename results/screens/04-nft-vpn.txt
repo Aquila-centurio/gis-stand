@@ -1,0 +1,27 @@
+aquila@aquila-brnhxx:~$ docker exec gis-vpn nft list ruleset
+table inet filter {
+	counter c_vpn_in_wg {
+		packets 8 bytes 1408
+	}
+
+	counter c_vpn_in_drop {
+		packets 1 bytes 84
+	}
+
+	counter c_vpn_fwd {
+		packets 82 bytes 16748
+	}
+
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		udp dport 51820 counter name "c_vpn_in_wg" accept
+		counter name "c_vpn_in_drop" drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		counter name "c_vpn_fwd"
+	}
+}

@@ -1,0 +1,11 @@
+aquila@aquila-brnhxx:~$ docker exec gis-vpn wg show
+interface: wg0
+  public key: imXbY4ehUsIks0S+1Zr/LUIMLocgqxuJMtFMwzVulnE=
+  private key: (hidden)
+  listening port: 51820
+
+peer: PrhYpuDYWzZW0l+EtFtBcUIcaNxFRc5wHMMHrYT3Nw0=
+  endpoint: 198.51.100.10:46580
+  allowed ips: 10.8.0.2/32
+  latest handshake: 14 seconds ago
+  transfer: 676 B received, 412 B sent
