@@ -79,6 +79,11 @@ t02_8() {
     "$SCRIPT_DIR/mode.sh" protect >/dev/null
     grep -q 'pg_hba.conf rejects' <<<"$out"
 }
+# Осиротевший процесс в контейнере ftp: без init: true его SIGCHLD ронял vsftpd (PID 1) с кодом 139.
+t02_9() {
+    dx ftp sh -c 'sleep 1 & exit 0' && sleep 3 \
+        && [[ "$(docker inspect -f '{{.State.Status}}' gis-ftp)" == running ]] && t02_4
+}
 
 # ---------- Этап 03: Suricata ----------
 alerts() { grep -c "\[1:$1:" "$FAST_LOG" 2>/dev/null || true; }
@@ -228,6 +233,7 @@ check 02.5 "backup.sh: pg_dump и загрузка на ftp" t02_5
 check 02.6 "webapp: SELECT из news разрешён" t02_6
 check 02.7 "webapp: internal_notes и ALTER запрещены" t02_7
 check 02.8 "pg_hba.conf отклоняет webapp с чужого адреса (МЭ выключен)" t02_8
+check 02.9 "ftp переживает осиротевший процесс (init: true, vsftpd не PID 1)" t02_9
 
 check 03.1 "Suricata: алерт XSS (sid 1000004)" t03_1
 check 03.2 "Suricata: алерт SQLi OR 1=1 (sid 1000005)" t03_2

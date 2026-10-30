@@ -1,6 +1,6 @@
 # Сводка по стенду ГИС «АУО» (вариант 3)
 
-Стенд: Docker Compose, проект `gis`, 13 контейнеров на Debian 13 (trixie), 4 docker-сети. Всё ПО открытое. Состояние на 30.10.2026: `check-all.sh` после чистого прогона даёт 47 PASS из 47 (`results/06-checks.txt`), демонстрация `demo.sh` пройдена целиком (`results/06-demo-run.txt`).
+Стенд: Docker Compose, проект `gis`, 13 контейнеров на Debian 13 (trixie), 4 docker-сети. Всё ПО открытое. Состояние на 30.10.2026: `check-all.sh` после чистого прогона даёт 48 PASS из 48 (`results/06-checks.txt`), демонстрация `demo.sh` пройдена целиком (`results/06-demo-run.txt`).
 
 ## 1. Топология и фактический IP-план
 
@@ -88,6 +88,7 @@
 | FTP, БД | бэкап pg_dump → ftp | 02.5 | 02-backup-upload, 02-ftp-list-after-backup |
 | БД | webapp: SELECT разрешён, internal_notes и ALTER запрещены | 02.6, 02.7 | 02-webapp-select-ok, 02-webapp-permission-denied |
 | БД | pg_hba.conf отклоняет webapp с чужого адреса при выключенном МЭ | 02.8 | 02-pg-hba-reject |
+| FTP | контейнер ftp переживает осиротевший процесс (`init: true`) | 02.9 | — (только `06-checks.txt`) |
 | IDS | алерт XSS (sid 1000004) | 03.1 | 03-xss-curl, 03-xss-fastlog, 03-xss-evejson, 03-xss-browser |
 | IDS | алерты SQLi (1000005, 1000006) | 03.2, 03.3 | 03-sqli-curl, 03-sqli-fastlog, 03-sqli-evejson |
 | IDS | успешное HTTPS-подключение (1000003) | 03.4 | 03-https-curl, 03-https-fastlog, 03-https-evejson |
@@ -150,7 +151,7 @@
 ```
 cd stand
 scripts/up.sh            # сборка образов и запуск с нуля, создаёт secrets/stand.env при отсутствии
-scripts/check-all.sh     # 47 проверок, таблица в results/06-checks.txt, код возврата 1 при FAIL
+scripts/check-all.sh     # 48 проверок, таблица в results/06-checks.txt, код возврата 1 при FAIL
 scripts/demo.sh          # демонстрация с паузами по Enter
 scripts/mode.sh audit    # ACL выключены (all forward accept), IDS, DNAT, логи работают
 scripts/mode.sh protect  # режим по умолчанию
@@ -159,7 +160,7 @@ scripts/shot.sh <имя> <команда>     # скрин терминала в
 scripts/shot-web.sh <имя> <url>     # скрин страницы из client
 ```
 
-Поднятие с нуля измерено 30.10.2026: `down -v` 12 с, `up.sh` 4 с (образы были в кэше docker, сборку без кэша не мерили), `check-all.sh` 92 с вместе с ожиданием готовности домена. Домен провизируется и arm1 входит в него автоматически, ручных шагов нет. Туннель WireGuard на client сам не поднимается: `docker exec gis-client wg-quick up wg0` и `down`.
+Поднятие с нуля измерено 30.10.2026 (последний прогон, после исправления ftp): `down -v` 13 с, `up.sh` 4 с (образы были в кэше docker, сборку без кэша не мерили), `check-all.sh` 115 с вместе с ожиданием готовности домена. Домен провизируется и arm1 входит в него автоматически, ручных шагов нет. Туннель WireGuard на client сам не поднимается: `docker exec gis-client wg-quick up wg0` и `down`.
 
 ## 7. Известные ограничения
 
@@ -171,7 +172,7 @@ scripts/shot-web.sh <имя> <url>     # скрин страницы из client
 - RADIUS проверяет пароли по своему файлу `users`, а не через ntlm_auth к Samba. Для fw-int выключен `require_message_authenticator`, потому что хелпер Squid не шлёт этот атрибут.
 - Сертификат web самоподписанный. ГОСТ-криптографии нет.
 - Журналы Squid и FreeRADIUS лежат внутри контейнеров и пропадают при `down -v`; журнал Suricata вынесен на хост в `stand/logs/gw-dmz/` (не в git).
-- vsftpd 3.0.5 в контейнере изредка падает с SIGSEGV (код 139), причина не установлена. Запуск обёрнут перезапуском за 1 с, падения пишутся в `/var/log/vsftpd/restarts.log` на ftp (`results/06-verify-demo.md`, «Проблемы»).
+- У контейнера ftp PID 1 это `docker-init` (`init: true`), а не vsftpd. В роли PID 1 vsftpd падал с SIGSEGV (код 139), когда в контейнере завершался осиротевший процесс; исправлено, разбор в `results/02-dmz-services.md`, «Проблемы», п. 5. `seccomp_sandbox=NO` к падению отношения не имел (стоял с этапа 02).
 - ICMP к самому fw-ext из ext отвечает (запрещён только транзит ICMP внутрь), поэтому «ping снаружи не проходит» показываем на адреса в ДМЗ и intra.
 - Сети стенда без `internal: true` (раздел 9, п. 1): изоляция от интернета обеспечивается тем, что masquerade в docker выключен.
 
@@ -198,4 +199,4 @@ scripts/shot-web.sh <имя> <url>     # скрин страницы из client
 4. IDS без режима IPS, правила XSS и SQLi проверяются по `http://` (этап 03).
 5. arm1: UID из SID, GPO не применяются, двухфакторку не моделировали (этап 05, часть А).
 6. RADIUS по файлу users, ClamAV с локальной сигнатурой, auditd не запускается, GUI АРМ нет (этап 05, часть Б).
-7. vsftpd запускается под перезапускающим супервизором из-за редкого SIGSEGV (этап 06).
+7. Для ftp включён `init: true`: vsftpd не может быть PID 1 контейнера (этап 06, `results/02-dmz-services.md`, «Проблемы», п. 5).

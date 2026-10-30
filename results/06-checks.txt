@@ -1,4 +1,4 @@
-# check-all.sh, 2026-10-30 15:20:33
+# check-all.sh, 2026-10-30 15:38:32
 01.1   PASS  ping attacker -> web (dmz) не проходит (protect)
 01.2   PASS  ping attacker -> db (intra) не проходит (protect)
 01.3   PASS  сайт открывается снаружи по публичному адресу (DNAT на web)
@@ -18,6 +18,7 @@
 02.6   PASS  webapp: SELECT из news разрешён
 02.7   PASS  webapp: internal_notes и ALTER запрещены
 02.8   PASS  pg_hba.conf отклоняет webapp с чужого адреса (МЭ выключен)
+02.9   PASS  ftp переживает осиротевший процесс (init: true, vsftpd не PID 1)
 03.1   PASS  Suricata: алерт XSS (sid 1000004)
 03.2   PASS  Suricata: алерт SQLi OR 1=1 (sid 1000005)
 03.3   PASS  Suricata: алерт SQLi UNION SELECT (sid 1000006)
@@ -46,4 +47,4 @@
 05.12  PASS  ClamAV: EICAR найден, обычный файл чист
 05.13  PASS  вход доменным пользователем через VPN (на arm1 виден 10.8.0.2)
 05.14  PASS  журналы Squid, RADIUS и sshd содержат события
-Итого: 47 PASS, 0 FAIL из 47
+Итого: 48 PASS, 0 FAIL из 48
