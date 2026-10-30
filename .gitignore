@@ -1,7 +1,5 @@
 .venv/
 __pycache__/
 *.pyc
-stand/secrets/*
-!stand/secrets/.gitkeep
 stand/logs/*/*
 !stand/logs/*/.gitkeep
