@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 grep -E "Accepted|Failed|session (opened|closed)|faillock|Access denied" /var/log/auth.log | tail -8
+2026-10-30T09:50:46.660753+00:00 arm1 sshd-session[157]: pam_unix(sshd:session): session closed for user archhead
+2026-10-30T09:50:46.908556+00:00 arm1 sshd-session[169]: Accepted password for sysadmin from ::1 port 42704 ssh2
+2026-10-30T09:50:46.914468+00:00 arm1 sshd-session[169]: pam_unix(sshd:session): session opened for user sysadmin(uid=1876601105) by sysadmin(uid=0)
+2026-10-30T09:50:46.941106+00:00 arm1 sshd-session[169]: pam_unix(sshd:session): session closed for user sysadmin
+2026-10-30T09:50:50.419387+00:00 arm1 sshd-session[232]: Failed password for archhead from ::1 port 42720 ssh2
+2026-10-30T09:50:52.250870+00:00 arm1 sshd-session[237]: pam_sss(sshd:account): Access denied for user Administrator: 6 (Permission denied)
+2026-10-30T09:50:52.250984+00:00 arm1 sshd-session[237]: Failed password for Administrator from ::1 port 42724 ssh2
+2026-10-30T09:50:52.251374+00:00 arm1 sshd-session[237]: fatal: Access denied for user Administrator by PAM account configuration [preauth]

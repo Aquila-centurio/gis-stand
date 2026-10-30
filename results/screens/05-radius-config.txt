@@ -1,0 +1,21 @@
+aquila@aquila-brnhxx:~$ docker exec gis-radius bash -c 'cd /etc/freeradius/3.0; sed -n "/gis-begin/,/gis-end/p" clients.conf | sed "s/secret .*/secret    = ***/" | grep -v "^\s*#"; sed -n "/gis-begin/,/gis-end/p" mods-config/files/authorize | sed "s/Password := .*/Password := \"***\"/"'
+client fw-int {
+	ipv4addr  = 192.168.50.4
+	secret    = ***
+	shortname = fw-int
+	require_message_authenticator = no
+	limit_proxy_state = no
+}
+# gis-begin
+archstaff1	Cleartext-Password := "***"
+
+archhead	Cleartext-Password := "***"
+
+sysadmin	Cleartext-Password := "***"
+
+secadmin	Cleartext-Password := "***"
+
+guest	Auth-Type := Reject
+	Reply-Message := "Guest: доступ в интернет запрещён"
+
+# gis-end

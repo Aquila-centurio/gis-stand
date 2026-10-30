@@ -1,0 +1,16 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-int bash -c 'for c in "archstaff1 $PROXY_USER_PASSWORD $RADIUS_SECRET" "archstaff1 WrongPass123 $RADIUS_SECRET" "guest Guest2026stand $RADIUS_SECRET" "archstaff1 $PROXY_USER_PASSWORD WrongSecret"; do set -- $c; echo "== radtest $1 (пароль $([ "$2" = "$PROXY_USER_PASSWORD" ] && echo верный || echo неверный), секрет $([ "$3" = "$RADIUS_SECRET" ] && echo верный || echo неверный))"; radtest -t pap "$1" "$2" 192.168.50.5 0 "$3" 2>&1 | grep -E "^Sent|^Received|Reply-Message|Expected|No reply" | sort -u; done'
+== radtest archstaff1 (пароль верный, секрет верный)
+Received Access-Accept Id 112 from 192.168.50.5:1812 to 192.168.50.4:60263 length 38
+Sent Access-Request Id 112 from 0.0.0.0:60263 to 192.168.50.5:1812 length 80
+== radtest archstaff1 (пароль неверный, секрет верный)
+(0) -: Expected Access-Accept got Access-Reject
+Received Access-Reject Id 239 from 192.168.50.5:1812 to 192.168.50.4:50485 length 38
+Sent Access-Request Id 239 from 0.0.0.0:50485 to 192.168.50.5:1812 length 80
+== radtest guest (пароль неверный, секрет верный)
+	Reply-Message = "Guest: доступ в интернет запрещён"
+(0) -: Expected Access-Accept got Access-Reject
+Received Access-Reject Id 69 from 192.168.50.5:1812 to 192.168.50.4:33441 length 96
+Sent Access-Request Id 69 from 0.0.0.0:33441 to 192.168.50.5:1812 length 75
+== radtest archstaff1 (пароль верный, секрет неверный)
+(0) No reply from server for ID 38 socket 3
+Sent Access-Request Id 38 from 0.0.0.0:36349 to 192.168.50.5:1812 length 80

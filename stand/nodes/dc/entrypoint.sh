@@ -72,5 +72,11 @@ samba-tool domain passwordsettings set \
     --account-lockout-duration=15 \
     --reset-account-lockout-after=15 >/dev/null
 
+# Журнал аутентификации (этап 05, часть Б): auth_audit:3 пишет в log.samba каждую проверку
+# пароля и выдачу билета Kerberos (кто, откуда, успех/ошибка). Правим при каждом старте,
+# т.к. smb.conf в volume и после первой провизии больше не создаётся.
+sed -i '/^\s*log level\s*=/d' /etc/samba/smb.conf
+sed -i 's/^\[global\]$/[global]\n\tlog level = 1 auth_audit:3/' /etc/samba/smb.conf
+
 echo "[dc] запуск samba"
 exec samba --foreground --no-process-group

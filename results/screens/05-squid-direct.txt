@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'echo "== напрямую без прокси"; curl -s -m 5 -o /dev/null -w "HTTP %{http_code}\n" http://198.51.100.80/; echo "код curl $? (28 = таймаут)"'; docker exec gis-fw-int nft list counter inet filter c_int_fwd_drop
+== напрямую без прокси
+HTTP 000
+код curl 28 (28 = таймаут)
+table inet filter {
+	counter c_int_fwd_drop {
+		packets 7 bytes 468
+	}
+}

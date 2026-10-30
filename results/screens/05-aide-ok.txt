@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 aide -c /etc/aide/aide-gis.conf --check | sed '/attributes of the/,$d'
+Start timestamp: 2026-10-30 09:51:08 +0000 (AIDE 0.19.1)
+AIDE found NO differences between database and filesystem. Looks okay!!
+
+Number of entries:	45
+
+---------------------------------------------------

@@ -1,0 +1,28 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'getfacl -p /srv/archive; for u in archstaff1 archhead sysadmin; do echo "== $u: $(id -nG $u)"; sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR $u@localhost "echo отчёт > /srv/archive/$u.txt && echo запись OK; ls /srv/archive" 2>&1; done; ls -l /srv/archive'
+# file: /srv/archive
+# owner: root
+# group: root
+user::rwx
+group::rwx
+group:workgroup:rwx
+mask::rwx
+other::---
+default:user::rwx
+default:group::---
+default:group:workgroup:rwx
+default:mask::rwx
+default:other::---
+
+== archstaff1: domain users workgroup
+запись OK
+archstaff1.txt
+== archhead: domain users workgroup
+запись OK
+archhead.txt
+archstaff1.txt
+== sysadmin: domain users admin
+bash: line 1: /srv/archive/sysadmin.txt: Permission denied
+ls: cannot open directory '/srv/archive': Permission denied
+total 8
+-rw-rw----+ 1 archhead   domain users 11 Oct 30 09:50 archhead.txt
+-rw-rw----+ 1 archstaff1 domain users 11 Oct 30 09:50 archstaff1.txt

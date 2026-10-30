@@ -16,6 +16,8 @@ DEFAULTS=(
     ARM_SSH_PASSWORD=Arm2026stand
     DC_ADMIN_PASSWORD=DcAdmin2026stand
     DOMAIN_USER_PASSWORD=Domain2026stand
+    RADIUS_SECRET=Radius2026stand
+    PROXY_USER_PASSWORD=Proxy2026stand
 )
 touch "$SECRETS_ENV"
 for kv in "${DEFAULTS[@]}"; do

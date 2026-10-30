@@ -1,0 +1,10 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'P=http://192.168.200.1:3128; echo "== без учётки"; curl -s -o /dev/null -w "HTTP %{http_code}\n" -x $P http://198.51.100.80/; echo "== неверный пароль"; curl -s -o /dev/null -w "HTTP %{http_code}\n" -x $P -U archstaff1:WrongPass123 http://198.51.100.80/; echo "== guest (Reject на RADIUS)"; curl -s -o /dev/null -w "HTTP %{http_code}\n" -x $P -U guest:Guest2026stand http://198.51.100.80/; echo "== верная учётка RADIUS"; curl -s -w "HTTP %{http_code}\n" -x $P -U "archstaff1:$PROXY_USER_PASSWORD" http://198.51.100.80/ | grep -E "h1|HTTP"'
+== без учётки
+HTTP 407
+== неверный пароль
+HTTP 407
+== guest (Reject на RADIUS)
+HTTP 407
+== верная учётка RADIUS
+<h1>«Сайт в интернете» — для проверки выхода АРМ (этап 05)</h1>
+HTTP 200

@@ -13,6 +13,8 @@
 | `ARM_SSH_PASSWORD` | `Arm2026stand` | локальный пользователь `armuser` на arm1 (проверка VPN-доступа с этапа 04) |
 | `DC_ADMIN_PASSWORD` | `DcAdmin2026stand` | `Administrator` домена gis.local (узел dc), ввод arm1 в домен (`adcli join`) |
 | `DOMAIN_USER_PASSWORD` | `Domain2026stand` | доменные пользователи `sysadmin`, `secadmin`, `archhead`, `archstaff1` (одинаковый учебный пароль) |
+| `RADIUS_SECRET` | `Radius2026stand` | общий секрет RADIUS между fw-int (Squid) и radius |
+| `PROXY_USER_PASSWORD` | `Proxy2026stand` | учётки FreeRADIUS `archstaff1`, `archhead`, `sysadmin`, `secadmin` для выхода в интернет через Squid |
 
 Ключи WireGuard (`stand/secrets/wg/*.key`, `*.pub`) — отдельно от `stand.env`, генерируются
 автоматически контейнером `vpn` при первом запуске (см. `results/04-vpn.md`), это не пароли,

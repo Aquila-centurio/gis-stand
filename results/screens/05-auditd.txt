@@ -1,0 +1,4 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'timeout 5 auditd -f 2>&1 | tail -2; auditctl -s 2>&1'
+You must be root or have capabilities to run this program.
+The audit daemon is exiting.
+You must be root to run this program.

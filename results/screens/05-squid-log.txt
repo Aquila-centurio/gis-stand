@@ -1,0 +1,5 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-int tail -5 /var/log/squid/access.log
+1793353837.896      0 192.168.200.31 TCP_DENIED/407 3464 GET http://198.51.100.80/ - HIER_NONE/- text/html
+1793353838.937   1027 192.168.200.31 TCP_DENIED/407 3464 GET http://198.51.100.80/ archstaff1 HIER_NONE/- text/html
+1793353839.952   1002 192.168.200.31 TCP_DENIED/407 3464 GET http://198.51.100.80/ guest HIER_NONE/- text/html
+1793353839.972      6 192.168.200.31 TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80 text/html

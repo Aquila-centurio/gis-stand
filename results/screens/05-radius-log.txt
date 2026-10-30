@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-radius bash -c 'grep "Auth:" /var/log/freeradius/radius.log | tail -6'
+Fri Oct 30 09:50:20 2026 : Auth: (0) Login OK: [archstaff1] (from client fw-int port 0)
+Fri Oct 30 09:50:20 2026 : Auth: (1) Login incorrect (pap: Cleartext password does not match "known good" password): [archstaff1] (from client fw-int port 0)
+Fri Oct 30 09:50:21 2026 : Auth: (2) Login incorrect: [guest] (from client fw-int port 0)
+Fri Oct 30 09:50:37 2026 : Auth: (6) Login incorrect (pap: Cleartext password does not match "known good" password): [archstaff1] (from client fw-int port 111)
+Fri Oct 30 09:50:38 2026 : Auth: (7) Login incorrect: [guest] (from client fw-int port 111)
+Fri Oct 30 09:50:39 2026 : Auth: (8) Login OK: [archstaff1] (from client fw-int port 111)

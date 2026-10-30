@@ -1,0 +1,12 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-int bash -c 'nft list chain inet filter input; ss -ltn | grep 3128'
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ip protocol icmp accept
+		ip saddr 192.168.200.0/24 ip daddr 192.168.200.1 tcp dport 3128 counter name "c_int_proxy_in" accept
+		counter name "c_int_in_drop" drop
+	}
+}
+LISTEN 0      1024   192.168.200.1:3128       0.0.0.0:*   

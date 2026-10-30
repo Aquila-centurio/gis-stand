@@ -1,0 +1,29 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'echo "PermitRootLogin yes" >> /etc/ssh/sshd_config; aide -c /etc/aide/aide-gis.conf --check | sed "/attributes of the/,\$d"; echo "код aide: ${PIPESTATUS[0]}"'
+Start timestamp: 2026-10-30 09:51:09 +0000 (AIDE 0.19.1)
+AIDE found differences between database and filesystem!!
+
+Summary:
+  Total number of entries:	45
+  Added entries:		0
+  Removed entries:		0
+  Changed entries:		1
+
+---------------------------------------------------
+Changed entries:
+---------------------------------------------------
+
+f > ... m   H.     : /etc/ssh/sshd_config
+
+---------------------------------------------------
+Detailed information about changes:
+---------------------------------------------------
+
+File: /etc/ssh/sshd_config
+ Size      : 3424                             | 3444
+ Mtime     : 2026-05-06 12:33:32 +0000        | 2026-10-30 09:51:09 +0000
+ SHA256    : 8YBTE600a9uA3/SlYKCA7fypqZj2ILZN | QppMDkoW5o5rt0hxcmRLYG8x0K/dCc9d
+             oqGrprz2eC4=                     | kF13XyVAhtY=
+
+
+---------------------------------------------------
+код aide: 4

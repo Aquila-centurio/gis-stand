@@ -1,0 +1,17 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'cat /var/lib/clamav/gis-eicar.ndb; cd /srv; printf "%s" "X5O!P%@AP[4\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*" > eicar.com; echo "обычный документ" > doc.txt; clamscan eicar.com doc.txt; echo "код clamscan: $?"; rm -f eicar.com doc.txt'
+GIS.Test.EICAR:0:*:45494341522d5354414e444152442d414e544956495255532d544553542d46494c45
+/srv/eicar.com: GIS.Test.EICAR.UNOFFICIAL FOUND
+/srv/doc.txt: OK
+
+----------- SCAN SUMMARY -----------
+Known viruses: 1
+Engine version: 1.4.3
+Scanned directories: 0
+Scanned files: 2
+Infected files: 1
+Data scanned: 0.00 MB
+Data read: 0.00 MB (ratio 0.00:1)
+Time: 0.008 sec (0 m 0 s)
+Start Date: 2026:10:30 09:50:47
+End Date:   2026:10:30 09:50:47
+код clamscan: 1

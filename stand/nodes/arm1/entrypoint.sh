@@ -38,7 +38,33 @@ fi
 
 mkdir -p /run/sshd /var/run/faillock
 ssh-keygen -A >/dev/null
+
+# Журнал событий: sshd, PAM (вход/выход, faillock) пишут в syslog -> /var/log/auth.log.
+rm -f /run/rsyslogd.pid
+rsyslogd
+
 rm -f /var/run/sssd.pid
 sssd -D
 
-exec /usr/sbin/sshd -D -e
+# Разграничение доступа: каталог отдела архива, доступ только доменной группе Workgroup (POSIX ACL).
+# Группа приходит из домена через SSSD, ждём, пока она станет видна.
+for i in $(seq 1 30); do
+    getent group workgroup >/dev/null 2>&1 && break
+    [ "$i" -eq 30 ] && echo "[arm1] группа workgroup не видна через SSSD, ACL не настроены" >&2
+    sleep 2
+done
+if getent group workgroup >/dev/null 2>&1; then
+    install -d -o root -g root -m 0770 /srv/archive
+    # d:g::--- — новые файлы не дают доступа своей основной группе (у доменных это domain users),
+    # иначе файл был бы открыт всем доменным пользователям, стоит только получить к нему путь.
+    setfacl -m g:workgroup:rwx,d:g:workgroup:rwx,d:g::---,d:o::---,m::rwx /srv/archive
+    echo "[arm1] ACL /srv/archive: workgroup rwx"
+fi
+
+# Контроль целостности: эталонная база AIDE после того, как entrypoint закончил настройку.
+mkdir -p /var/lib/aide/gis
+aide -c /etc/aide/aide-gis.conf --init >/dev/null || true
+mv -f /var/lib/aide/gis/aide.db.new /var/lib/aide/gis/aide.db
+echo "[arm1] база AIDE создана"
+
+exec /usr/sbin/sshd -D

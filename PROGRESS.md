@@ -7,26 +7,37 @@
 - [x] 02 — сервисы ДМЗ и БД: web, FTP, PostgreSQL (`prompts/02-dmz-services.md`)
 - [x] 03 — IDS/IPS на шлюзе ДМЗ (`prompts/03-ids.md`)
 - [x] 04 — VPN WireGuard и удалённый доступ (`prompts/04-vpn.md`)
-- [ ] 05 — домен, АРМ, RADIUS+Squid, аналоги Secret Net (`prompts/05-domain-arm-radius.md`)
+- [x] 05 — домен, АРМ, RADIUS+Squid, аналоги Secret Net (`prompts/05-domain-arm-radius.md`)
   - [x] часть А: dc (Samba AD), ввод arm1 в домен, доменный вход, faillock/pwquality
-  - [ ] часть Б: RADIUS, Squid на fw-int, inet, аналоги Secret Net (ACL, AIDE, ClamAV, аудит), таблица логов, вход через VPN доменным пользователем
+  - [x] часть Б: RADIUS, Squid на fw-int, inet, аналоги Secret Net (ACL, AIDE, ClamAV, аудит), таблица логов, вход через VPN доменным пользователем
 - [ ] 06 — итоговые проверки, сводка, демо для защиты (`prompts/06-verify-demo.md`)
 
 ## Текущее состояние
 (Что сейчас работает, что нет, как поднять стенд. Обновляй, а не дописывай в конец.)
 
-Этапы 01-04 и часть А этапа 05 готовы. `cd stand && scripts/up.sh` поднимает с нуля: 4 сети (`gis_ext`, `gis_transit`, `gis_dmz`, `gis_intra`), 13 контейнеров, named volume `gis_dc-lib`/`gis_dc-etc` для базы домена; создаёт `stand/secrets/stand.env` с учебными паролями или дописывает в него недостающие переменные (см. `results/00-summary.md`). Проверено 30.10 полным `docker compose down -v` + `up.sh`: домен провизируется и arm1 входит в него сам. Маршрутизация между всеми зонами работает через контейнеры-роутеры (fw-ext, gw-dmz, fw-int, vpn-заглушка). nftables с режимами `protect`/`audit` настроены на fw-ext, gw-dmz, fw-int — `scripts/mode.sh protect|audit` переключает без пересоздания контейнеров.
+Этапы 01-05 готовы. `cd stand && scripts/up.sh` поднимает с нуля: 4 сети (`gis_ext`, `gis_transit`, `gis_dmz`, `gis_intra`), 13 контейнеров, named volume `gis_dc-lib`/`gis_dc-etc` для базы домена; создаёт `stand/secrets/stand.env` с учебными паролями или дописывает в него недостающие переменные (см. `results/00-summary.md`). Проверено 30.10 полным `docker compose down -v` + `up.sh` (после части Б этапа 05): домен провизируется, arm1 входит в него сам, Squid+RADIUS, ACL, AIDE, вход через VPN работают без ручных действий. Маршрутизация между всеми зонами работает через контейнеры-роутеры (fw-ext, gw-dmz, fw-int, vpn-заглушка). nftables с режимами `protect`/`audit` настроены на fw-ext, gw-dmz, fw-int — `scripts/mode.sh protect|audit` переключает без пересоздания контейнеров.
 
 - **web** (dmz .10): Apache+PHP, учебный сайт «Интернет-сайт Счётной палаты РФ» (главная/новости/документы/поиск), HTTPS на самоподписанном сертификате (80 → редирект на 443). `search.php` намеренно уязвим к XSS.
 - **db** (intra .10): PostgreSQL 17, база `site` (news/documents/internal_notes), роль `webapp` только с SELECT на news/documents и только с адреса web (`pg_hba.conf`).
 - **ftp** (dmz .11): vsftpd, пользователь `ftpbackup` (chroot, без анонимного доступа), пассивные порты 21100-21110. `backup.sh` на db — `pg_dump` → загрузка на ftp.
 - **gw-dmz**: кроме МЭ (nftables, с этапа 01) теперь ещё Suricata 7.0.10 (IDS, af-packet на transit+dmz), 9 своих правил (`stand/nodes/gw-dmz/suricata/local.rules`): ICMP, успешное HTTPS-подключение, XSS, SQLi (2 варианта), сканирование портов, FTP-логин. Логи на хосте в `stand/logs/gw-dmz/` (`fast.log`, `eve.json`, не в git). IPS (nftables queue + NFQUEUE) не делали — не хватило времени, см. `results/03-ids.md`.
+- **dc**: журнал аутентификации Samba `log level = 1 auth_audit:3` (entrypoint правит smb.conf при каждом старте).
 - **dc** (intra .20): Samba 4.22 AD DC, домен `gis.local` (realm `GIS.LOCAL`, NetBIOS `GIS`),
   встроенный DNS. Провизия один раз при первом старте (база в volume), группы Admin (sysadmin,
   secadmin) и Workgroup (archhead, archstaff1) и парольная политика (сложность, длина 10, история 5,
   90 дней, блокировка после 5 попыток на 15 мин) применяются при каждом старте. NT ACL в xattr
   `user.NTACL` (без CAP_SYS_ADMIN).
-- **radius** — пустая заглушка (часть Б этапа 05).
+- **radius** (transit .5): FreeRADIUS 3.2.7, клиент только fw-int (секрет `RADIUS_SECRET`),
+  пользователи в `mods-config/files/authorize` (archstaff1, archhead, sysadmin, secadmin с паролем
+  `PROXY_USER_PASSWORD`, guest — явный Reject). Для fw-int `require_message_authenticator = no`
+  (хелпер Squid не шлёт атрибут). Лог `/var/log/freeradius/radius.log` (внутри контейнера).
+- **fw-int**: Squid 6.13 на 192.168.200.1:3128, Basic-авторизация через `basic_radius_auth` →
+  radius. Новая цепочка input (protect): к самому fw-int только 3128 из intra и ICMP. Лог
+  `/var/log/squid/access.log` (внутри контейнера). `max_filedescriptors 4096` обязателен (иначе падает в Docker).
+- **arm1** (часть Б): `/srv/archive` с ACL только для workgroup, AIDE (`/etc/aide/aide-gis.conf`,
+  база при старте), ClamAV с локальной сигнатурой EICAR, rsyslog → `/var/log/auth.log` (sshd
+  теперь пишет туда, а не в `docker logs`). auditd в контейнере не работает (нужен CAP_AUDIT_CONTROL).
+- **client**: добавлен sshpass и env_file, вход через VPN доменным пользователем работает.
 - `scripts/shot-web.sh` — скриншот страницы из `client` headless-хромиумом.
 - **vpn** (transit .3): WireGuard-сервер wg0 (10.8.0.1/24, udp 51820), ключи в `stand/secrets/wg/`
   (генерируются автоматически при первом старте контейнера, не в git). Свой nftables: принимает
@@ -76,8 +87,23 @@
    `pam_loginuid` в sshd переведён в optional (нет CAP_AUDIT_CONTROL), двухфакторку (ключ+пароль)
    не моделировали. Подробности — `results/05-domain-arm-radius.md`, «Отступления».
 
+8. Этап 05, часть Б: RADIUS по файлу users (без ntlm_auth к Samba), для fw-int выключен
+   require_message_authenticator (Squid его не шлёт), ClamAV с локальной сигнатурой EICAR вместо
+   официальной базы, auditd не запускается в контейнере, журналы Squid/FreeRADIUS внутри
+   контейнеров, GUI АРМ не делали. Подробности — `results/05-domain-arm-radius.md`, «Отступления», п. 8-14.
+
 ## Журнал (новые записи сверху)
 Формат записи: `ДАТА ВРЕМЯ — этап NN — что сделано / что сломалось / что дальше`
+
+2026-10-30 — этап 05, часть Б — FreeRADIUS (клиент fw-int, users-файл, guest Reject), Squid на
+fw-int с basic_radius_auth (407 без учётки/с неверной, 200 с верной, прямой выход закрыт), цепочка
+input на fw-int (только 3128 из intra). arm1: ACL на /srv/archive для Workgroup, AIDE, ClamAV с
+локальной сигнатурой EICAR, rsyslog → auth.log; auditd не работает без CAP_AUDIT_CONTROL (не давали).
+dc: auth_audit в log.samba. client: вход через VPN доменным пользователем. Нашли и исправили: Squid
+падал (nofile ~1e9 → max_filedescriptors 4096); FreeRADIUS в режиме auto после radtest начинал
+требовать Message-Authenticator от fw-int и молча дропал запросы Squid (→ require_message_authenticator
+= no для fw-int); default-ACL открывал файлы группе domain users (→ d:g::---). Проверки 12-24 PASS,
+таблицы журналов и Secret Net в results/05. Проверено down -v + up.sh. GUI АРМ не делали. Дальше: этап 06.
 
 2026-10-30 — этап 05, часть А — dc: Samba AD DC gis.local (провизия без CAP_SYS_ADMIN через
 user.NTACL), группы Admin/Workgroup, 4 пользователя, парольная политика домена. arm1: adcli join +

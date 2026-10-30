@@ -1,14 +1,16 @@
 # Этап 05 — домен, АРМ, RADIUS + Squid, аналоги Secret Net
 
-Этап выполняется в два захода. Часть А (этот файл сейчас): контроллер домена dc на Samba AD,
-ввод arm1 в домен, вход доменным пользователем, PAM (faillock, pwquality). Часть Б (RADIUS,
-Squid на fw-int, inet, аналоги Secret Net, таблица логов, вход через VPN доменным пользователем)
-будет дописана в следующей сессии.
+Этап выполнен в два захода. Часть А: контроллер домена dc на Samba AD, ввод arm1 в домен, вход
+доменным пользователем, PAM (faillock, pwquality). Часть Б: FreeRADIUS, Squid с авторизацией через
+RADIUS на fw-int, аналоги функций Secret Net на arm1 (ACL, AIDE, ClamAV, журнал входов), таблица
+журналов, вход через VPN доменным пользователем.
 
 ## Цель
 Поднять контроллер домена `gis.local` на открытом ПО вместо Windows Server, ввести АРМ
 (Debian вместо Windows 10) в домен, настроить вход сотрудников доменными учётками, парольную
 политику домена и блокировку учётки на АРМ после нескольких неудачных попыток входа.
+Выпускать АРМ в интернет только через прокси после авторизации на RADIUS-сервере (примечание
+схемы М2) и заменить функции Secret Net открытыми средствами.
 
 ## Что сделано (часть А)
 - **dc** (intra .20): Samba 4.22.11 (Debian 13) в роли AD DC, домен `gis.local`, realm
@@ -31,6 +33,27 @@ Squid на fw-int, inet, аналоги Secret Net, таблица логов, �
   Локальная учётка `armuser` с этапа 04 сохранена.
 - Новые учебные пароли `DC_ADMIN_PASSWORD` и `DOMAIN_USER_PASSWORD` в `stand/secrets/stand.env`,
   `up.sh` дописывает отсутствующие переменные в уже существующий файл.
+
+## Что сделано (часть Б)
+- **radius** (transit .5): FreeRADIUS 3.2.7. Единственный внешний клиент (NAS) — fw-int
+  (192.168.50.4, общий секрет `RADIUS_SECRET`). Пользователи в файле users
+  (`mods-config/files/authorize`): archstaff1, archhead, sysadmin, secadmin с паролем
+  `PROXY_USER_PASSWORD`, guest заведён явно с отказом (`Auth-Type := Reject`). Каждая попытка
+  входа пишется в `/var/log/freeradius/radius.log` (`auth = yes`, без паролей).
+- **fw-int**: Squid 6.13 слушает только 192.168.200.1:3128 (intra). Basic-авторизация, логин и
+  пароль проверяет хелпер `basic_radius_auth` на radius. Доступ разрешён только из intra и только
+  после успешной авторизации. Прямой выход из intra наружу, как и раньше, режется в forward
+  (`c_int_fwd_drop`), наружу ходит сам fw-int (правило `c_ext_fwint_out` на fw-ext с этапа 01).
+- В nftables fw-int (режим protect) добавлена цепочка input с политикой drop: к самому fw-int
+  можно только на 3128 из intra и ICMP, ответы RADIUS приходят как established.
+- **inet** (ext .80): готовый с этапа 01 `python3 -m http.server`, цель проверки выхода.
+- **arm1**, аналоги Secret Net: каталог отдела `/srv/archive` с POSIX ACL только для группы
+  Workgroup; AIDE (`/etc/aide/aide-gis.conf`) с эталонной базой, которая создаётся при старте;
+  ClamAV 1.4.3 с локальной сигнатурой EICAR; rsyslog, журнал входов в `/var/log/auth.log`.
+  auditd в контейнере не запускается (см. отступления).
+- **dc**: включён журнал аутентификации Samba (`log level = 1 auth_audit:3`).
+- **client**: добавлен sshpass, клиент через WireGuard входит на arm1 доменной учёткой.
+- Новые учебные значения `RADIUS_SECRET` и `PROXY_USER_PASSWORD` в `stand/secrets/stand.env`.
 
 ## Конфигурация (ключевые фрагменты)
 Полные файлы: `stand/nodes/dc/{Dockerfile,entrypoint.sh}`, `stand/nodes/arm1/{Dockerfile,entrypoint.sh,krb5.conf,sssd.conf,faillock.conf,pwquality.conf,pam/common-*}`, `stand/docker-compose.yml` (сервисы dc, arm1, volumes).
@@ -94,6 +117,78 @@ account  [default=bad success=ok user_unknown=ignore]  pam_sss.so
 проверяется локально (`pam_unix`), а если пользователь доменный, то через SSSD на контроллере
 домена по Kerberos (`pam_sss`). Неудача записывается в `/var/run/faillock/<имя>`. В фазе account
 SSSD проверяет `ad_access_filter`, успешный вход обнуляет счётчик faillock.
+
+### Часть Б
+Полные файлы: `stand/nodes/radius/{Dockerfile,entrypoint.sh}`, `stand/nodes/fw-int/{Dockerfile,entrypoint.sh,squid.conf,nft/fw-int-*.nft}`, `stand/nodes/arm1/{Dockerfile,entrypoint.sh,aide-gis.conf,gis-eicar.ndb}`, `stand/nodes/dc/entrypoint.sh`.
+
+FreeRADIUS, клиент fw-int (`clients.conf`, секрет подставляет entrypoint из `stand.env`):
+```
+client fw-int {
+	ipv4addr  = 192.168.50.4
+	secret    = ***
+	shortname = fw-int
+	require_message_authenticator = no
+	limit_proxy_state = no
+}
+```
+Пользователи (`mods-config/files/authorize`):
+```
+archstaff1	Cleartext-Password := "***"
+archhead	Cleartext-Password := "***"
+sysadmin	Cleartext-Password := "***"
+secadmin	Cleartext-Password := "***"
+guest	Auth-Type := Reject
+	Reply-Message := "Guest: доступ в интернет запрещён"
+```
+
+Squid (`stand/nodes/fw-int/squid.conf`, главное); `/etc/squid/radius.conf` с `server 192.168.50.5`,
+`secret`, `identifier fw-int` создаёт entrypoint, права `640 root:proxy`:
+```
+http_port 192.168.200.1:3128
+max_filedescriptors 4096
+auth_param basic program /usr/lib/squid/basic_radius_auth -f /etc/squid/radius.conf -t 5
+auth_param basic realm GIS proxy: login RADIUS
+acl intra src 192.168.200.0/24
+acl radius_users proxy_auth REQUIRED
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access deny !intra
+http_access allow intra radius_users
+http_access deny all
+access_log daemon:/var/log/squid/access.log squid
+```
+
+nftables fw-int, режим protect, новая цепочка input (в audit — `policy accept`):
+```
+chain input {
+    type filter hook input priority 0; policy drop;
+    iif lo accept
+    ct state established,related accept
+    ip protocol icmp accept
+    ip saddr 192.168.200.0/24 ip daddr 192.168.200.1 tcp dport 3128 counter name c_int_proxy_in accept
+    counter name c_int_in_drop drop
+}
+```
+
+arm1, разграничение доступа (entrypoint, после того как SSSD отдал группу workgroup):
+```
+install -d -o root -g root -m 0770 /srv/archive
+setfacl -m g:workgroup:rwx,d:g:workgroup:rwx,d:g::---,d:o::---,m::rwx /srv/archive
+```
+`d:g::---` нужен потому, что основная группа доменных пользователей `domain users`: без него
+новый файл получал бы права группы-владельца для всех доменных пользователей.
+
+AIDE (`stand/nodes/arm1/aide-gis.conf`): правило `GIS = p+u+g+s+m+sha256+acl` на `/etc/passwd`,
+`/etc/group`, `/etc/ssh/sshd_config`, `/etc/krb5.conf`, `/etc/pam.d`, `/etc/security`, `/etc/sssd`,
+`/usr/local/bin`. База `--init` в конце entrypoint, проверка `aide -c /etc/aide/aide-gis.conf --check`.
+
+ClamAV, локальная сигнатура (`/var/lib/clamav/gis-eicar.ndb`, формат ndb: имя, тип файла 0 = любой,
+смещение * = где угодно, hex строки `EICAR-STANDARD-ANTIVIRUS-TEST-FILE`):
+```
+GIS.Test.EICAR:0:*:45494341522d5354414e444152442d414e544956495255532d544553542d46494c45
+```
+
+Samba, журнал аутентификации (entrypoint dc, при каждом старте): `log level = 1 auth_audit:3` в `[global]`.
 
 ## Проверка функционирования
 
@@ -173,6 +268,128 @@ SSSD проверяет `ad_access_filter`, успешный вход обнул
 - Получили: все 13 контейнеров `Up`, в логе arm1 `Created computer account: CN=ARM1,CN=Computers,DC=gis,DC=local`, доменный вход archstaff1 работает, сайт снаружи отвечает 200. Скрины проверок 1-10 сняты именно на этом свежем стенде.
 - Итог: PASS
 
+Проверки 12-24 (часть Б) сняты на стенде, поднятом 30.10 заново через `docker compose down -v` и `up.sh`: домен провизировался, arm1 вошёл в домен, ACL и база AIDE созданы без ручных действий. После этого dc один раз пересобрали (включили `auth_audit`).
+
+### Проверка 12 — настройки RADIUS-сервера
+- Команда: `docker exec gis-radius ...` вывод блоков `gis-begin/gis-end` из `clients.conf` и `mods-config/files/authorize` (секрет и пароли заменены на `***` при выводе).
+- Ожидание: единственный внешний клиент fw-int, четыре учётки и guest с отказом.
+- Получили: `client fw-int { ipv4addr = 192.168.50.4 ... }`, учётки archstaff1, archhead, sysadmin, secadmin, `guest Auth-Type := Reject`.
+- Скрин: screens/05-radius-config.png
+- Итог: PASS
+
+### Проверка 13 — radtest с верными и неверными данными
+- Команда: с fw-int (настоящий клиент RADIUS) `radtest -t pap <логин> <пароль> 192.168.50.5 0 <секрет>` для четырёх случаев.
+- Ожидание: верные данные → Access-Accept; неверный пароль → Access-Reject; guest → Access-Reject с сообщением; неверный общий секрет → сервер не отвечает.
+- Получили: `Received Access-Accept Id 112 from 192.168.50.5:1812`; `Received Access-Reject Id 239`; для guest `Received Access-Reject Id 69` и `Reply-Message = "Guest: доступ в интернет запрещён"`; с неверным секретом `No reply from server for ID 38` (FreeRADIUS отбрасывает пакет с неверной подписью).
+- Скрин: screens/05-radius-radtest.png
+- Итог: PASS
+
+### Проверка 14 — выход в интернет через Squid только после авторизации на RADIUS
+- Команда: на arm1 `curl -x http://192.168.200.1:3128 http://198.51.100.80/` без учётки, с неверным паролем (`archstaff1:WrongPass123`), под guest и с верной учёткой.
+- Ожидание: 407, 407, 407, 200.
+- Получили: `HTTP 407`, `HTTP 407`, `HTTP 407`, `<h1>«Сайт в интернете» — для проверки выхода АРМ (этап 05)</h1>`, `HTTP 200`.
+- Скрин: screens/05-squid-auth.png
+- Итог: PASS
+
+### Проверка 15 — прямой выход из intra без прокси закрыт
+- Команда: `docker exec gis-arm1 curl -m 5 http://198.51.100.80/`, затем `nft list counter inet filter c_int_fwd_drop` на fw-int.
+- Ожидание: соединение не устанавливается, счётчик drop на fw-int растёт.
+- Получили: `HTTP 000`, код curl 28 (таймаут); `c_int_fwd_drop packets 7 bytes 468`.
+- Скрин: screens/05-squid-direct.png
+- Итог: PASS
+
+### Проверка 16 — журналы Squid и FreeRADIUS
+- Команда: `docker exec gis-fw-int tail -5 /var/log/squid/access.log`; `docker exec gis-radius grep "Auth:" /var/log/freeradius/radius.log | tail -6`.
+- Ожидание: в Squid видны отказы 407 и успешный запрос с логином; в FreeRADIUS те же попытки от клиента fw-int.
+- Получили: Squid `TCP_DENIED/407 ... GET http://198.51.100.80/ -` (без учётки), `TCP_DENIED/407 ... archstaff1`, `TCP_DENIED/407 ... guest`, `TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80`. FreeRADIUS: `Login incorrect (pap: Cleartext password does not match "known good" password): [archstaff1] (from client fw-int port 111)`, `Login incorrect: [guest] (from client fw-int port 111)`, `Login OK: [archstaff1] (from client fw-int port 111)`. Порт 111 подставляет хелпер Squid, порт 0 — radtest из проверки 13.
+- Скрин: screens/05-squid-log.png, screens/05-radius-log.png
+- Итог: PASS
+
+### Проверка 17 — к самому fw-int открыт только прокси из intra
+- Команда: `docker exec gis-fw-int bash -c 'nft list chain inet filter input; ss -ltn | grep 3128'`
+- Ожидание: политика input drop, разрешён только tcp 3128 из 192.168.200.0/24; Squid слушает только адрес в intra.
+- Получили: `policy drop`, правило `ip saddr 192.168.200.0/24 ip daddr 192.168.200.1 tcp dport 3128 ... accept`, `LISTEN ... 192.168.200.1:3128`.
+- Скрин: screens/05-fwint-input.png
+- Итог: PASS
+
+### Проверка 18 — разграничение доступа к каталогу отдела (ACL)
+- Команда: `getfacl -p /srv/archive`, затем по ssh на arm1 под archstaff1, archhead (Workgroup) и sysadmin (Admin) запись файла в `/srv/archive` и `ls`.
+- Ожидание: члены Workgroup пишут и читают, sysadmin получает отказ.
+- Получили: `group:workgroup:rwx`, `default:group::---`, `other::---`. archstaff1 и archhead: `запись OK`. sysadmin: `/srv/archive/sysadmin.txt: Permission denied`, `ls: cannot open directory '/srv/archive': Permission denied`. Файлы `-rw-rw----+ archhead`, `-rw-rw----+ archstaff1`.
+- Скрин: screens/05-acl.png
+- Итог: PASS
+
+### Проверка 19 — контроль целостности (AIDE)
+- Команда: `aide -c /etc/aide/aide-gis.conf --check`; затем `echo "PermitRootLogin yes" >> /etc/ssh/sshd_config` и снова `--check`. После проверки файл вернули из копии и пересоздали базу.
+- Ожидание: до изменения расхождений нет; после изменения AIDE показывает изменённый файл.
+- Получили: до `AIDE found NO differences between database and filesystem. Looks okay!!`, 45 записей. После `AIDE found differences ... Changed entries: 1`, `f > ... m   H.     : /etc/ssh/sshd_config`, `Size: 3424 | 3444`, разные SHA256, код возврата aide 4 (есть изменённые файлы).
+- Скрин: screens/05-aide-ok.png, screens/05-aide-detect.png
+- Итог: PASS
+
+### Проверка 20 — антивирус (ClamAV, EICAR)
+- Команда: создать `/srv/eicar.com` со стандартной тестовой строкой EICAR и обычный `doc.txt`, `clamscan eicar.com doc.txt`.
+- Ожидание: EICAR найден, обычный файл чистый.
+- Получили: `/srv/eicar.com: GIS.Test.EICAR.UNOFFICIAL FOUND`, `/srv/doc.txt: OK`, `Known viruses: 1`, `Infected files: 1`, код clamscan 1. Суффикс UNOFFICIAL ClamAV добавляет ко всем сигнатурам не из официальной базы.
+- Скрин: screens/05-clamav-eicar.png
+- Итог: PASS
+
+### Проверка 21 — аудит (auditd) в контейнере
+- Команда: `timeout 5 auditd -f; auditctl -s` на arm1.
+- Ожидание: показать, запускается ли auditd без дополнительных прав.
+- Получили: `You must be root or have capabilities to run this program.`, `The audit daemon is exiting.`, `auditctl`: `You must be root to run this program.` (процесс root, но без CAP_AUDIT_CONTROL).
+- Скрин: screens/05-auditd.png
+- Итог: ограничение зафиксировано, регистрация входов сделана через rsyslog (проверка 22).
+
+### Проверка 22 — журнал входов на arm1
+- Команда: неверный пароль archhead и попытка входа Administrator, затем `grep -E "Accepted|Failed|session (opened|closed)|faillock|Access denied" /var/log/auth.log | tail -8`.
+- Ожидание: в журнале видны успешные входы, неудачи и отказ по фильтру доступа.
+- Получили: `Accepted password for sysadmin from ::1`, `session opened for user sysadmin(uid=1876601105)`, `session closed for user sysadmin`, `Failed password for archhead from ::1`, `pam_sss(sshd:account): Access denied for user Administrator: 6 (Permission denied)`, `fatal: Access denied for user Administrator by PAM account configuration [preauth]`.
+- Скрин: screens/05-arm1-authlog.png
+- Итог: PASS
+
+### Проверка 23 — вход через VPN доменным пользователем (совместно с этапом 04)
+- Команда: на client `wg-quick up wg0`, `wg show`, `sshpass ... ssh archstaff1@192.168.200.31 "id; hostname -f; klist; echo $SSH_CONNECTION"`, `wg-quick down wg0`; на arm1 строка из auth.log.
+- Ожидание: туннель поднят, вход доменной учёткой, на arm1 виден адрес клиента в туннеле.
+- Получили: `endpoint: 198.51.100.1:51820`, `latest handshake: Now`; `uid=1876601108(archstaff1) ... groups=...,1876601104(workgroup)`, `arm1.gis.local`, `Default principal: archstaff1@GIS.LOCAL`, `SSH_CONNECTION=10.8.0.2 45394 192.168.200.31 22`, код ssh 0; в auth.log `Accepted password for archstaff1 from 10.8.0.2 port 45394 ssh2`.
+- Скрин: screens/05-vpn-domain-ssh.png
+- Итог: PASS
+
+### Проверка 24 — минимальное логирование по узлам
+- Команда: по одной последней записи из каждого журнала (см. таблицу ниже).
+- Ожидание: на каждом узле есть журнал своих событий.
+- Получили: примеры строк в таблице ниже.
+- Скрин: screens/05-logs-examples.png
+- Итог: PASS
+
+## Журналы событий (примечание 8 схемы М2)
+Журналы лежат внутри контейнеров, кроме Suricata (смонтирован на хост). Смотреть: `docker exec gis-<узел> tail <путь>`.
+
+| Узел | Какие события | Где журнал | Пример записи |
+|---|---|---|---|
+| web | HTTP-запросы к сайту, ошибки Apache | `/var/log/apache2/gis-access.log`, `gis-error.log` | `198.51.100.66 - - [30/Oct/2026:09:51:16 +0000] "GET / HTTP/1.1" 200 3864 "-" "curl/8.14.1"` |
+| gw-dmz | алерты IDS Suricata | `stand/logs/gw-dmz/fast.log`, `eve.json` | `[1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose ... 198.51.100.66:34346 -> 192.168.100.10:80` |
+| fw-ext, gw-dmz, fw-int | отброшенные и разрешённые пакеты (именованные счётчики nft) | `nft list counters` | `c_ext_fwd_drop packets 1 bytes 58`, `c_int_fwd_drop packets 7 bytes 468` |
+| fw-int | запросы через прокси с логином и кодом ответа | `/var/log/squid/access.log` | `192.168.200.31 TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80` |
+| radius | попытки аутентификации (успех/отказ, клиент) | `/var/log/freeradius/radius.log` | `Auth: (8) Login OK: [archstaff1] (from client fw-int port 111)` |
+| dc | проверки пароля и выдача билетов Kerberos | `/var/log/samba/log.samba` | `Auth: [Kerberos KDC,ENC-TS Pre-authentication] ... [archstaff1...] ... status [NT_STATUS_OK] ... remote host [ipv4:192.168.200.31:...]` |
+| arm1 | входы и выходы по ssh, неудачи, отказы PAM | `/var/log/auth.log` | `Accepted password for archstaff1 from 10.8.0.2 port 45394 ssh2` |
+| ftp | сеансы и команды FTP | `/var/log/vsftpd/vsftpd.log` | `[ftpbackup] FTP response: Client "192.168.200.10", "221 Goodbye."` |
+| db | запуск и ошибки PostgreSQL | `docker logs gis-db` | `LOG:  database system is ready to accept connections` |
+| vpn | состояние туннеля (последний handshake, объём) | `wg show` на vpn | см. этап 04, screens/04-wg-show-vpn.png |
+
+## Функции Secret Net и чем заменили
+
+| Функция Secret Net | Чем заменили | Проверка | Результат |
+|---|---|---|---|
+| Идентификация и аутентификация, парольная политика | Samba AD (политика домена), SSSD+Kerberos на arm1, pam_pwquality | проверки 4, 7, 10 | PASS |
+| Блокировка после неудачных попыток | pam_faillock на arm1 (3 попытки), блокировка в домене (5 попыток) | проверка 9 | PASS |
+| Разграничение доступа к АРМ | `ad_access_filter` SSSD: только Admin и Workgroup | проверка 8 | PASS |
+| Разграничение доступа к ресурсам (дискреционное) | POSIX ACL на `/srv/archive` для Workgroup | проверка 18 | PASS |
+| Контроль целостности | AIDE (хеш SHA-256, права, владелец, ACL) | проверка 19 | PASS |
+| Антивирусная защита | ClamAV 1.4.3, локальная сигнатура EICAR | проверка 20 | PASS |
+| Регистрация событий | rsyslog (auth.log), журнал Samba auth_audit; auditd не работает в контейнере | проверки 21, 22, 24 | PASS с ограничением |
+| Двухфакторная аутентификация (ключ + пароль) | не моделировали | — | не сделано |
+
 ## Отступления от схемы и причины
 1. Вместо Windows Server DC используется Samba AD DC, вместо Windows 10 АРМ Debian-клиент с SSSD (решение группы, см. `prompts/00-context.md`).
 2. NT ACL на sysvol хранятся в xattr `user.NTACL`, а не в `security.NTACL` (опция `acl_xattr:security_acl_name`). Для `security.*` контейнеру нужен `CAP_SYS_ADMIN`, его не давали, `--privileged` тоже не нужен. На работу домена это не влияет, отличие только в месте хранения ACL. Запасной вариант (MIT Kerberos + OpenLDAP) не понадобился.
@@ -181,6 +398,13 @@ SSSD проверяет `ad_access_filter`, успешный вход обнул
 5. В `/etc/pam.d/sshd` на arm1 `pam_loginuid` переведён из `required` в `optional`: без `CAP_AUDIT_CONTROL` контейнер не может записать loginuid, и сессия sshd рвалась бы.
 6. Двухфакторную аутентификацию (электронный ключ + пароль из документации ГИС) не моделировали, только пароль.
 7. Блокировка работает на двух уровнях: на arm1 faillock блокирует после 3 попыток, в домене после 5. Порог на АРМ ниже, поэтому подбор пароля через arm1 упирается в faillock раньше, чем учётка блокируется во всём домене (после неудачных попыток и успешного входа в домене `badPwdCount: 0`).
+8. RADIUS проверяет пользователей по своему файлу users, а не по паролям домена. Пароль для прокси (`PROXY_USER_PASSWORD`) отдельный от доменного. Привязку FreeRADIUS к Samba через `ntlm_auth` не делали: radius стоит в transit, для неё нужен winbind на radius, ввод его в домен и правила fw-int для LDAP/Kerberos/SMB из transit в intra. Методичка допускает файл users как основной вариант.
+9. Для клиента fw-int на FreeRADIUS явно выключено требование Message-Authenticator (`require_message_authenticator = no`, `limit_proxy_state = no`), то есть защита от атаки BlastRADIUS (CVE-2024-3596) для этого клиента не действует. Причина: хелпер Squid `basic_radius_auth` (Squid 6.13) этот атрибут не отправляет (проверили tcpdump: в Access-Request только NAS-Port, NAS-Port-Type, NAS-Identifier и обычные User-Name/User-Password). Риск ограничен тем, что fw-int и radius в одном сегменте transit, куда снаружи доступа нет.
+10. ClamAV работает с одной локальной сигнатурой EICAR (`gis-eicar.ndb`), а не с официальной базой. Стенд без выхода в интернет, а официальная база (main/daily/bytecode) около 200 МБ и обновляется через freshclam с CDN ClamAV. Механизм проверки тот же, что и с полной базой, отличается только набор сигнатур.
+11. auditd в контейнере не работает: для него нужна capability `CAP_AUDIT_CONTROL`, а подсистема аудита ядра не изолирована пространствами имён, то есть правила аудита из контейнера легли бы на ядро хоста. Хост по правилам проекта не трогаем, поэтому capability не давали. Регистрацию входов и действий PAM ведёт rsyslog (`/var/log/auth.log`), проверки пароля на контроллере домена пишет Samba (`auth_audit`). Аудит команд пользователей (аналог журнала действий Secret Net) не моделировали.
+12. С появлением rsyslog sshd на arm1 запускается без `-e`, поэтому его записи теперь в `/var/log/auth.log`, а не в `docker logs gis-arm1` (скрин 05-arm1-sshd-log части А снят ещё по `docker logs`).
+13. Журналы Squid и FreeRADIUS оставлены внутри контейнеров, на хост не смонтированы: эти службы пишут журнал от своих пользователей (proxy, freerad), и bind-mount пришлось бы отдавать им во владение, после чего папку на хосте нельзя удалить без sudo.
+14. GUI АРМ (Xfce + noVNC, п. 8 этапа, опционально) не делали.
 
 ## Проблемы и как решили
 1. **Администратор домена входил на АРМ, хотя не состоит в Admin/Workgroup.** В первой версии `common-account` pam_unix и pam_sss стояли как альтернативы. pam_unix в фазе account возвращает success для любого пользователя, которого видит NSS (в том числе доменного через SSSD), поэтому до pam_sss и `ad_access_filter` дело не доходило. Сделали как в штатном профиле Debian для SSSD: pam_sss отдельной обязательной строкой после pam_unix (`[default=bad success=ok user_unknown=ignore]`). После этого `Access denied for user Administrator by PAM account configuration`.
@@ -188,3 +412,8 @@ SSSD проверяет `ad_access_filter`, успешный вход обнул
 3. **Повторный ввод в домен после пересоздания контейнера.** Keytab живёт в контейнере и теряется при пересоздании, а учётка ARM1$ на dc остаётся. Проверили: `adcli join` находит существующую учётку (`Found computer account for ARM1$`) и просто обновляет пароль и keytab, ошибки нет.
 4. **Ложное срабатывание `set -e` в entrypoint dc (найдено при написании).** Проверка членства в группе через `samba-tool ... | grep -q` под `pipefail` могла упасть из-за SIGPIPE. Вывод сначала сохраняется в переменную, потом grep.
 5. Пароль администратора передаётся `samba-tool domain provision` и `samba-tool user create` аргументом (так устроены эти команды), он виден в списке процессов на время провизии. Для учебного стенда допустимо, на arm1 пароль передаётся adcli через stdin.
+6. **Squid сразу падал при старте:** `FATAL: xcalloc: Unable to allocate 1073741816 blocks of 432 bytes!`. Docker даёт контейнеру лимит открытых файлов около 10^9, Squid берёт его как размер таблицы дескрипторов. Ограничили `max_filedescriptors 4096` в `squid.conf`.
+7. **Squid отвечал 407 даже на верную учётку**, хотя radtest с той же учёткой получал Access-Accept. В `cache.log` хелпера `basic_radius_auth: No response from RADIUS server`, в `radius.log` `It looks like the client has been updated to protect from the BlastRADIUS attack. Please set "require_message_authenticator = true" for client fw-int`. FreeRADIUS 3.2.7 по умолчанию работает в режиме `auto`: увидев от fw-int первый запрос с Message-Authenticator (его шлёт radtest), он начинает требовать этот атрибут от всех запросов клиента и молча отбрасывает запросы хелпера Squid, который его не шлёт. tcpdump подтвердил, что атрибута в запросах Squid нет. Явно задали для fw-int `require_message_authenticator = no` (см. отступление 9). Попутно поймали, что `docker compose up --force-recreate` без пересборки образа не подхватывает новый entrypoint (он копируется в образ), пересобирали `docker compose build radius`.
+8. **Новые файлы в `/srv/archive` получали доступ для всех доменных пользователей через группу-владельца.** Основная группа у доменных пользователей `domain users`, и с первой версией ACL файл archstaff1 создавался с `group::rwx #effective:rw-` для неё. Пока каталог закрыт, прочитать его не мог никто посторонний, но при переносе файла это была бы дыра. Добавили default-ACL `d:g::---`.
+9. **В журнале Samba не было событий входа.** По умолчанию `log level = 0`, в `log.samba` только сообщения о запуске. Включили `auth_audit:3`. smb.conf лежит в volume и создаётся только при провизии, поэтому строку правит entrypoint при каждом старте.
+

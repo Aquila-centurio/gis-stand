@@ -12,4 +12,15 @@ MODE=$(gis_read_mode)
 gis_write_mode "$MODE"
 nft -f "/etc/nft/fw-int-${MODE}.nft"
 
-exec sleep infinity
+# Squid: конфиг хелпера RADIUS с общим секретом (секрет только из stand.env, в образ не попадает).
+RADIUS_SECRET="${RADIUS_SECRET:?нужен RADIUS_SECRET в stand/secrets/stand.env}"
+umask 027
+printf 'server 192.168.50.5\nsecret %s\nidentifier fw-int\n' "$RADIUS_SECRET" > /etc/squid/radius.conf
+chown root:proxy /etc/squid/radius.conf
+umask 022
+
+mkdir -p /var/log/squid /var/spool/squid
+chown proxy:proxy /var/log/squid /var/spool/squid
+rm -f /run/squid.pid
+squid -k parse -f /etc/squid/squid.conf
+exec squid -N -f /etc/squid/squid.conf

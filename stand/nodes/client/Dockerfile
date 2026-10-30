@@ -1,6 +1,6 @@
 FROM gis-base
 
-RUN apt-get update && apt-get install -y --no-install-recommends chromium wireguard-tools openssh-client \
+RUN apt-get update && apt-get install -y --no-install-recommends chromium wireguard-tools openssh-client sshpass \
     && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

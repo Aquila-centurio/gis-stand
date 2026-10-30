@@ -1,0 +1,19 @@
+aquila@aquila-brnhxx:~$ for x in 'gis-web /var/log/apache2/gis-access.log' 'gis-fw-int /var/log/squid/access.log' 'gis-radius /var/log/freeradius/radius.log' 'gis-arm1 /var/log/auth.log' 'gis-ftp /var/log/vsftpd/vsftpd.log'; do set -- $x; echo "== $1:$2"; docker exec $1 tail -1 $2 | cut -c1-170; done; echo '== gis-db: docker logs (stderr postgres)'; docker logs --tail 1 gis-db 2>&1 | cut -c1-170; echo '== gis-dc:/var/log/samba/log.samba'; docker exec gis-dc grep -h 'Auth: \[' /var/log/samba/log.samba | grep NT_STATUS_OK | tail -1 | cut -c1-170; echo '== gw-dmz: stand/logs/gw-dmz/fast.log'; grep XSS logs/gw-dmz/fast.log | tail -1 | cut -c1-170; echo '== gis-fw-ext: nft counter c_ext_fwd_drop'; docker exec gis-fw-ext nft list counter inet filter c_ext_fwd_drop | grep packets
+== gis-web:/var/log/apache2/gis-access.log
+198.51.100.66 - - [30/Oct/2026:09:51:16 +0000] "GET / HTTP/1.1" 200 3864 "-" "curl/8.14.1"
+== gis-fw-int:/var/log/squid/access.log
+1793353839.972      6 192.168.200.31 TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80 text/html
+== gis-radius:/var/log/freeradius/radius.log
+Fri Oct 30 09:50:39 2026 : Auth: (8) Login OK: [archstaff1] (from client fw-int port 111)
+== gis-arm1:/var/log/auth.log
+2026-10-30T09:50:52.981087+00:00 arm1 sshd-session[246]: pam_unix(sshd:session): session closed for user archstaff1
+== gis-ftp:/var/log/vsftpd/vsftpd.log
+Fri Oct 30 09:51:32 2026 [pid 47] [ftpbackup] FTP response: Client "192.168.200.10", "221 Goodbye."
+== gis-db: docker logs (stderr postgres)
+2026-10-30 09:48:34.005 UTC [58] LOG:  database system is ready to accept connections
+== gis-dc:/var/log/samba/log.samba
+  Auth: [Kerberos KDC,ENC-TS Pre-authentication] user [(null)]\[archstaff1\\@GIS.LOCAL@GIS.LOCAL] at [Fri, 30 Oct 2026 09:50:52.777451 UTC] with [aes256-cts-hmac-sha1-96]
+== gw-dmz: stand/logs/gw-dmz/fast.log
+10/30/2026-09:51:16.810778  [**] [1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:34346 -> 192
+== gis-fw-ext: nft counter c_ext_fwd_drop
+		packets 1 bytes 58

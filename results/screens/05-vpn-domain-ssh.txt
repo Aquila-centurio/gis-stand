@@ -1,0 +1,10 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client bash -c 'wg-quick up wg0 >/dev/null 2>&1; wg show wg0 | grep -E "interface|endpoint|handshake"; sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 archstaff1@192.168.200.31 "id; hostname -f; klist | sed -n 2p; echo SSH_CONNECTION=\$SSH_CONNECTION"; echo "код ssh: $?"; wg-quick down wg0 >/dev/null 2>&1'; docker exec gis-arm1 grep 'Accepted password for archstaff1 from 10.8.0.2' /var/log/auth.log | tail -1
+interface: wg0
+  endpoint: 198.51.100.1:51820
+  latest handshake: Now
+uid=1876601108(archstaff1) gid=1876600513(domain users) groups=1876600513(domain users),1876601104(workgroup)
+arm1.gis.local
+Default principal: archstaff1@GIS.LOCAL
+SSH_CONNECTION=10.8.0.2 45394 192.168.200.31 22
+код ssh: 0
+2026-10-30T09:50:52.946090+00:00 arm1 sshd-session[246]: Accepted password for archstaff1 from 10.8.0.2 port 45394 ssh2
