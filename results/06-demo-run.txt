@@ -1,0 +1,150 @@
+Стенд ГИС «АУО» (вариант 3): демонстрация
+Режим МЭ: protect
+
+
+=== 1. Схема и состояние узлов ===
+13 контейнеров в 4 docker-сетях: ext (интернет), transit (общий коммутатор), dmz, intra.
+$ docker ps --filter name=gis- --format '{{.Names}}\t{{.Status}}' | sort
+gis-arm1	Up 2 minutes
+gis-attacker	Up 2 minutes
+gis-client	Up 2 minutes
+gis-db	Up 2 minutes
+gis-dc	Up 2 minutes
+gis-ftp	Up 2 minutes
+gis-fw-ext	Up 2 minutes
+gis-fw-int	Up 2 minutes
+gis-gw-dmz	Up 2 minutes
+gis-inet	Up 2 minutes
+gis-radius	Up 2 minutes
+gis-vpn	Up 2 minutes
+gis-web	Up 2 minutes
+$ for c in fw-ext gw-dmz vpn fw-int radius web ftp db dc arm1 client attacker inet; do printf '%-10s' $c; docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}={{$v.IPAddress}} {{end}}' gis-$c; done
+fw-ext    gis_ext=198.51.100.1 gis_transit=192.168.50.1 
+gw-dmz    gis_dmz=192.168.100.1 gis_transit=192.168.50.2 
+vpn       gis_transit=192.168.50.3 
+fw-int    gis_intra=192.168.200.1 gis_transit=192.168.50.4 
+radius    gis_transit=192.168.50.5 
+web       gis_dmz=192.168.100.10 
+ftp       gis_dmz=192.168.100.11 
+db        gis_intra=192.168.200.10 
+dc        gis_intra=192.168.200.20 
+arm1      gis_intra=192.168.200.31 
+client    gis_ext=198.51.100.10 
+attacker  gis_ext=198.51.100.66 
+inet      gis_ext=198.51.100.80 
+
+
+=== 2. Межсетевой экран: снаружи сайт открывается, всё остальное закрыто ===
+Режим protect: политика drop по умолчанию, наружу опубликованы только 80/443 (DNAT на web) и udp/51820 (VPN).
+$ docker exec gis-attacker ping -c2 -W1 192.168.100.10
+PING 192.168.100.10 (192.168.100.10) 56(84) bytes of data.
+
+--- 192.168.100.10 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1015ms
+
+(код выхода: 1)
+$ docker exec gis-attacker ping -c2 -W1 192.168.200.10
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+
+--- 192.168.200.10 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1031ms
+
+(код выхода: 1)
+$ docker exec gis-client curl -sS -m5 -o /dev/null -w 'http://198.51.100.1/ -> HTTP %{http_code}, редирект: %{redirect_url}\n' http://198.51.100.1/
+http://198.51.100.1/ -> HTTP 301, редирект: https://198.51.100.1/
+$ docker exec gis-client curl -k -sS -m5 https://198.51.100.1/ | grep -o '<title>[^<]*</title>'
+<title>Интернет-сайт Счётной палаты РФ (учебный стенд)</title>
+$ docker exec gis-fw-ext nft list ruleset | grep -E 'dnat|counter' | head -8
+		ip daddr 198.51.100.1 tcp dport 80 dnat ip to 192.168.100.10:80
+		ip daddr 198.51.100.1 tcp dport 443 dnat ip to 192.168.100.10:443
+		ip daddr 198.51.100.1 udp dport 51820 dnat ip to 192.168.50.3:51820
+	counter c_ext_invalid {
+	counter c_ext_to_web {
+	counter c_ext_to_vpn {
+	counter c_ext_fwint_out {
+	counter c_ext_fwd_drop {
+
+
+=== 3. Два режима: audit и protect ===
+audit: ACL не применяются, но маршрутизация, DNAT, IDS и логи работают (нужно для внешнего аудита).
+$ '/home/aquila/Study/Методы и средства защиты информации в объектах КИИ/gis/stand/scripts/mode.sh' audit | tail -1
+Режим МЭ переключён на: audit
+$ docker exec gis-attacker ping -c2 -W1 192.168.200.10
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+64 bytes from 192.168.200.10: icmp_seq=1 ttl=62 time=0.128 ms
+64 bytes from 192.168.200.10: icmp_seq=2 ttl=62 time=0.171 ms
+
+--- 192.168.200.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1029ms
+rtt min/avg/max/mdev = 0.128/0.149/0.171/0.021 ms
+$ '/home/aquila/Study/Методы и средства защиты информации в объектах КИИ/gis/stand/scripts/mode.sh' protect | tail -1
+Режим МЭ переключён на: protect
+$ docker exec gis-attacker ping -c2 -W1 192.168.200.10
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+
+--- 192.168.200.10 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1006ms
+
+(код выхода: 1)
+
+
+=== 4. IDS Suricata: XSS в запросе даёт алерт ===
+Запрос идёт по http://, чтобы payload был виден пассивному IDS (HTTPS шифрует его, см. results/03-ids.md).
+$ docker exec gis-attacker curl -sS -m5 'http://198.51.100.1/search.php?q=%3Cscript%3Ealert(1)%3C/script%3E' | grep -o 'script[^<]*' | head -2
+script%3Ealert(1)%3C/script%3E">here
+Ждём алерт в fast.log (до 20 с)...
+$ grep '1:1000004:' '/home/aquila/Study/Методы и средства защиты информации в объектах КИИ/gis/stand/scripts/../logs/gw-dmz/fast.log' | tail -2 | cut -c1-200
+10/30/2026-10:21:25.311348  [**] [1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:42394 -> 192.168.100.10:80
+10/30/2026-10:21:25.311340  [**] [1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:42394 -> 192.168.100.10:80
+
+
+=== 5. VPN WireGuard: до и после туннеля ===
+Политика: VPN-клиенту (10.8.0.0/24) разрешён только arm1:22.
+$ docker exec gis-client sh -c 'nc -vz -w3 192.168.200.31 22; echo EXIT:$?'
+nc: connect to 192.168.200.31 port 22 (tcp) timed out: Operation now in progress
+EXIT:1
+$ docker exec gis-client wg-quick up wg0 2>&1 | grep -E 'interface|address' 
+[#] ip -4 address add 10.8.0.2/32 dev wg0
+$ docker exec gis-client sh -c 'nc -vz -w3 192.168.200.31 22; echo EXIT:$?'
+Connection to 192.168.200.31 22 port [tcp/*] succeeded!
+EXIT:0
+$ docker exec gis-client sh -c 'nc -vz -w3 192.168.200.10 5432; echo EXIT:$?'
+nc: connect to 192.168.200.10 port 5432 (tcp) timed out: Operation now in progress
+EXIT:1
+$ docker exec gis-vpn wg show wg0 | grep -E 'peer|endpoint|handshake|transfer' | sed 's/^peer: .*/peer: (ключ скрыт)/'
+peer: (ключ скрыт)
+  endpoint: 198.51.100.10:56749
+  latest handshake: 3 seconds ago
+  transfer: 8.29 KiB received, 7.20 KiB sent
+$ docker exec gis-client wg-quick down wg0 2>&1 | tail -1
+[#] ip link delete dev wg0
+
+
+=== 6. Домен gis.local: вход доменного пользователя на АРМ ===
+arm1 введён в домен Samba AD; войти могут только группы Admin и Workgroup.
+$ docker exec gis-arm1 bash -c 'sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 archstaff1@localhost "id; hostname -f; klist | sed -n 2p"'
+uid=17801108(archstaff1) gid=17800513(domain users) groups=17800513(domain users),17801104(workgroup)
+arm1.gis.local
+Default principal: archstaff1@GIS.LOCAL
+$ docker exec gis-arm1 bash -c 'sshpass -p "$DC_ADMIN_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 Administrator@localhost id; echo "Administrator (не в Admin/Workgroup): код ssh $?"'
+Administrator (не в Admin/Workgroup): код ssh 255
+
+
+=== 7. RADIUS и Squid: 407, затем 200 ===
+Выход из intra в «интернет» только через Squid fw-int:3128 с авторизацией на RADIUS.
+$ docker exec gis-arm1 curl -s -m5 -o /dev/null -w 'напрямую без прокси: HTTP %{http_code}\n' http://198.51.100.80/
+напрямую без прокси: HTTP 000
+(код выхода: 28)
+$ docker exec gis-arm1 curl -s -o /dev/null -w 'через Squid без учётки: HTTP %{http_code}\n' -x http://192.168.200.1:3128 http://198.51.100.80/
+через Squid без учётки: HTTP 407
+$ docker exec gis-arm1 bash -c 'curl -s -o /dev/null -w "через Squid с учёткой archstaff1: HTTP %{http_code}\n" -x http://192.168.200.1:3128 -U "archstaff1:$PROXY_USER_PASSWORD" http://198.51.100.80/'
+через Squid с учёткой archstaff1: HTTP 200
+$ docker exec gis-radius grep 'Auth:' /var/log/freeradius/radius.log | tail -2
+Fri Oct 30 10:20:27 2026 : Auth: (4) Login OK: [archstaff1] (from client fw-int port 111)
+Fri Oct 30 10:21:38 2026 : Auth: (5) Login OK: [archstaff1] (from client fw-int port 111)
+$ docker exec gis-fw-int tail -3 /var/log/squid/access.log
+1793355665.301      1 192.168.200.31 TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80 text/html
+1793355697.932      0 192.168.200.31 TCP_DENIED/407 3464 GET http://198.51.100.80/ - HIER_NONE/- text/html
+1793355698.014      1 192.168.200.31 TCP_MISS/200 514 GET http://198.51.100.80/ archstaff1 HIER_DIRECT/198.51.100.80 text/html
+
+Демонстрация завершена. Режим МЭ: protect.

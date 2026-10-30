@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ stand/scripts/shot-web.sh 03-xss-browser "https://198.51.100.1/search.php?q=<script>document.body.style.background='red'</script>"
+Сохранено: results/screens/03-xss-browser.png

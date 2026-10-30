@@ -1,0 +1,49 @@
+# check-all.sh, 2026-10-30 15:20:33
+01.1   PASS  ping attacker -> web (dmz) не проходит (protect)
+01.2   PASS  ping attacker -> db (intra) не проходит (protect)
+01.3   PASS  сайт открывается снаружи по публичному адресу (DNAT на web)
+01.4   PASS  ssh на публичный адрес fw-ext закрыт
+01.5   PASS  прямой доступ attacker -> dmz в обход DNAT закрыт
+01.6   PASS  web -> db:5432 разрешён
+01.7   PASS  web -> db:22 запрещён
+01.8   PASS  ftp -> db:5432 запрещён (dmz -> intra только web -> db)
+01.9   PASS  маршруты между зонами на роутерах
+01.10  PASS  режим audit: ping attacker -> db проходит, затем возврат в protect
+01.11  PASS  после возврата в protect ping attacker -> db снова закрыт
+02.1   PASS  http -> 301 редирект на https
+02.2   PASS  https news.php отдаёт данные из БД (200)
+02.3   PASS  search.php отражает <script> (учебная XSS)
+02.4   PASS  FTP: анонимный доступ запрещён
+02.5   PASS  backup.sh: pg_dump и загрузка на ftp
+02.6   PASS  webapp: SELECT из news разрешён
+02.7   PASS  webapp: internal_notes и ALTER запрещены
+02.8   PASS  pg_hba.conf отклоняет webapp с чужого адреса (МЭ выключен)
+03.1   PASS  Suricata: алерт XSS (sid 1000004)
+03.2   PASS  Suricata: алерт SQLi OR 1=1 (sid 1000005)
+03.3   PASS  Suricata: алерт SQLi UNION SELECT (sid 1000006)
+03.4   PASS  Suricata: успешное HTTPS-подключение (sid 1000003)
+03.5   PASS  Suricata: FTP USER (sid 1000008)
+03.6   PASS  Suricata: ICMP снаружи (sid 1000001, audit)
+03.7   PASS  Suricata: сканирование портов (sid 1000007, audit)
+04.1   PASS  до туннеля client -> arm1:22 недоступен
+04.2   PASS  после wg-quick up client -> arm1:22 доступен
+04.3   PASS  через туннель db:5432 и dc:445 запрещены
+04.4   PASS  client: handshake с сервером есть
+04.5   PASS  vpn: handshake с клиентом есть
+04.6   PASS  после wg-quick down доступ пропал
+04.7   PASS  ключ-самозванец: handshake нет, доступа нет
+05.1   PASS  dc: домен gis.local
+05.2   PASS  arm1 введён в домен (adcli testjoin)
+05.3   PASS  доменный вход archstaff1 на arm1 (группа workgroup)
+05.4   PASS  sysadmin входит на arm1, Administrator нет (ad_access_filter)
+05.5   PASS  faillock: блок после 3 неверных паролей, вход после сброса
+05.6   PASS  парольная политика домена отклоняет слабый пароль
+05.7   PASS  RADIUS: Accept для archstaff1, Reject для неверного пароля и guest
+05.8   PASS  Squid: 407 без учётки и с неверной, 200 с верной
+05.9   PASS  прямой выход arm1 в интернет в обход Squid закрыт
+05.10  PASS  ACL /srv/archive: workgroup пишет, admin нет
+05.11  PASS  AIDE: фиксирует правку отслеживаемого файла
+05.12  PASS  ClamAV: EICAR найден, обычный файл чист
+05.13  PASS  вход доменным пользователем через VPN (на arm1 виден 10.8.0.2)
+05.14  PASS  журналы Squid, RADIUS и sshd содержат события
+Итого: 47 PASS, 0 FAIL из 47

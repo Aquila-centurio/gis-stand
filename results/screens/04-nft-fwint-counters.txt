@@ -5,11 +5,11 @@ table inet filter {
 	}
 
 	counter c_int_web_to_db {
-		packets 0 bytes 0
+		packets 2 bytes 120
 	}
 
 	counter c_int_vpn_to_arm {
-		packets 6 bytes 360
+		packets 0 bytes 0
 	}
 
 	counter c_int_arm_to_web {
@@ -21,11 +21,28 @@ table inet filter {
 	}
 
 	counter c_int_db_to_ftp {
-		packets 1 bytes 60
+		packets 0 bytes 0
 	}
 
 	counter c_int_fwd_drop {
-		packets 6 bytes 360
+		packets 0 bytes 0
+	}
+
+	counter c_int_proxy_in {
+		packets 0 bytes 0
+	}
+
+	counter c_int_in_drop {
+		packets 0 bytes 0
+	}
+
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ip protocol icmp accept
+		ip saddr 192.168.200.0/24 ip daddr 192.168.200.1 tcp dport 3128 counter name "c_int_proxy_in" accept
+		counter name "c_int_in_drop" drop
 	}
 
 	chain forward {

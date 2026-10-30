@@ -22,4 +22,16 @@ echo "ftpbackup:$FTP_BACKUP_PASSWORD" | chpasswd
 mkdir -p /var/log/vsftpd /var/run/vsftpd/empty
 : > /var/log/vsftpd/vsftpd.log
 
-exec /usr/sbin/vsftpd /etc/vsftpd.conf
+# Мастер-процесс vsftpd 3.0.5 в контейнере изредка падает с SIGSEGV (код 139) после обычной сессии,
+# причина не установлена (см. PROGRESS.md, «Известные проблемы»). Перезапускаем его за 1 с и пишем
+# код выхода в restarts.log, чтобы падения были видны, а не пропадали вместе с контейнером.
+pid=
+trap '[ -z "$pid" ] || kill "$pid" 2>/dev/null; exit 0' TERM INT
+while true; do
+    /usr/sbin/vsftpd /etc/vsftpd.conf &
+    pid=$!
+    rc=0
+    wait "$pid" || rc=$?
+    echo "$(date '+%F %T') vsftpd завершился с кодом $rc, перезапуск" >> /var/log/vsftpd/restarts.log
+    sleep 1
+done

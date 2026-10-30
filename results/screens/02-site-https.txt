@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ stand/scripts/shot-web.sh 02-site-https 'https://198.51.100.1/news.php'
+Сохранено: results/screens/02-site-https.png
