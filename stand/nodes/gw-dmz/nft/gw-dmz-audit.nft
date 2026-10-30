@@ -1,0 +1,10 @@
+flush ruleset
+
+table inet filter {
+    counter c_dmz_fwd_audit {}
+
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+        counter name c_dmz_fwd_audit
+    }
+}

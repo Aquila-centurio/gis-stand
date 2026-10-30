@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client curl -sS -m5 http://198.51.100.1
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>ГИС — заглушка сайта</title></head>
+<body>
+<h1>Стенд ГИС «АУО» — узел web (заглушка этапа 01)</h1>
+<p>Реальный сайт на Apache+PHP появится в этапе 02.</p>
+</body>
+</html>

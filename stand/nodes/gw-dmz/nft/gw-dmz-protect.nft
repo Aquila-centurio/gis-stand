@@ -1,0 +1,22 @@
+flush ruleset
+
+table inet filter {
+    counter c_dmz_invalid {}
+    counter c_dmz_to_web {}
+    counter c_dmz_to_ftp {}
+    counter c_dmz_web_to_db {}
+    counter c_dmz_fwd_drop {}
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        ct state established,related accept
+        ct state invalid counter name c_dmz_invalid drop
+        # transit -> dmz: только к web на 80/443 (через DNAT с fw-ext)
+        ip daddr 192.168.100.10 tcp dport { 80, 443 } counter name c_dmz_to_web accept
+        # ftp только из intra, порт 21 и диапазон пассивных портов (согласуется с vsftpd в этапе 02)
+        ip saddr 192.168.200.0/24 ip daddr 192.168.100.11 tcp dport { 21, 21100-21110 } counter name c_dmz_to_ftp accept
+        # dmz -> intra: только web -> db:5432
+        ip saddr 192.168.100.10 ip daddr 192.168.200.10 tcp dport 5432 counter name c_dmz_web_to_db accept
+        counter name c_dmz_fwd_drop drop
+    }
+}

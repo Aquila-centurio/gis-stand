@@ -1,0 +1,45 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-ext nft list ruleset
+table inet nat {
+	chain prerouting {
+		type nat hook prerouting priority dstnat; policy accept;
+		ip daddr 198.51.100.1 tcp dport 80 dnat ip to 192.168.100.10:80
+		ip daddr 198.51.100.1 tcp dport 443 dnat ip to 192.168.100.10:443
+		ip daddr 198.51.100.1 udp dport 51820 dnat ip to 192.168.50.3:51820
+	}
+
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		ip saddr 192.168.50.4 masquerade
+	}
+}
+table inet filter {
+	counter c_ext_invalid {
+		packets 0 bytes 0
+	}
+
+	counter c_ext_to_web {
+		packets 3 bytes 180
+	}
+
+	counter c_ext_to_vpn {
+		packets 0 bytes 0
+	}
+
+	counter c_ext_fwint_out {
+		packets 0 bytes 0
+	}
+
+	counter c_ext_fwd_drop {
+		packets 34 bytes 2184
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid counter name "c_ext_invalid" drop
+		ip daddr 192.168.100.10 tcp dport { 80, 443 } ct status dnat counter name "c_ext_to_web" accept
+		ip daddr 192.168.50.3 udp dport 51820 ct status dnat counter name "c_ext_to_vpn" accept
+		ip saddr 192.168.50.4 tcp dport { 80, 443 } counter name "c_ext_fwint_out" accept
+		counter name "c_ext_fwd_drop" drop
+	}
+}

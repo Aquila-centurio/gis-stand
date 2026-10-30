@@ -1,0 +1,37 @@
+aquila@aquila-brnhxx:~$ docker exec gis-fw-int nft list ruleset
+table inet filter {
+	counter c_int_invalid {
+		packets 0 bytes 0
+	}
+
+	counter c_int_web_to_db {
+		packets 1 bytes 60
+	}
+
+	counter c_int_vpn_to_arm {
+		packets 0 bytes 0
+	}
+
+	counter c_int_arm_to_web {
+		packets 0 bytes 0
+	}
+
+	counter c_int_arm_to_ftp {
+		packets 0 bytes 0
+	}
+
+	counter c_int_fwd_drop {
+		packets 0 bytes 0
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid counter name "c_int_invalid" drop
+		ip saddr 192.168.100.10 ip daddr 192.168.200.10 tcp dport 5432 counter name "c_int_web_to_db" accept
+		ip saddr 10.8.0.0/24 ip daddr 192.168.200.31 tcp dport 22 counter name "c_int_vpn_to_arm" accept
+		ip saddr 192.168.200.31 ip daddr 192.168.100.10 tcp dport { 80, 443 } counter name "c_int_arm_to_web" accept
+		ip saddr 192.168.200.31 ip daddr 192.168.100.11 tcp dport 21 counter name "c_int_arm_to_ftp" accept
+		counter name "c_int_fwd_drop" drop
+	}
+}

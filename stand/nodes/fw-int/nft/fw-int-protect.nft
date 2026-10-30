@@ -1,0 +1,24 @@
+flush ruleset
+
+table inet filter {
+    counter c_int_invalid {}
+    counter c_int_web_to_db {}
+    counter c_int_vpn_to_arm {}
+    counter c_int_arm_to_web {}
+    counter c_int_arm_to_ftp {}
+    counter c_int_fwd_drop {}
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        ct state established,related accept
+        ct state invalid counter name c_int_invalid drop
+        # web -> db:5432 (трафик идёт через dmz -> transit -> intra)
+        ip saddr 192.168.100.10 ip daddr 192.168.200.10 tcp dport 5432 counter name c_int_web_to_db accept
+        # VPN-клиенты -> arm1 по SSH (этап 04)
+        ip saddr 10.8.0.0/24 ip daddr 192.168.200.31 tcp dport 22 counter name c_int_vpn_to_arm accept
+        # arm1 -> web / ftp наружу из intra
+        ip saddr 192.168.200.31 ip daddr 192.168.100.10 tcp dport { 80, 443 } counter name c_int_arm_to_web accept
+        ip saddr 192.168.200.31 ip daddr 192.168.100.11 tcp dport 21 counter name c_int_arm_to_ftp accept
+        counter name c_int_fwd_drop drop
+    }
+}

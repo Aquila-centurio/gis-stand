@@ -1,0 +1,19 @@
+aquila@aquila-brnhxx:~$ echo '--- режим audit: ping attacker -> db ---'; docker exec gis-attacker ping -c2 -W1 192.168.200.10; /home/aquila/Study/Методы\ и\ средства\ защиты\ информации\ в\ объектах\ КИИ/gis/stand/scripts/mode.sh protect; echo '--- режим protect: тот же ping ---'; docker exec gis-attacker ping -c2 -W1 192.168.200.10
+--- режим audit: ping attacker -> db ---
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+64 bytes from 192.168.200.10: icmp_seq=1 ttl=62 time=0.124 ms
+64 bytes from 192.168.200.10: icmp_seq=2 ttl=62 time=0.216 ms
+
+--- 192.168.200.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1030ms
+rtt min/avg/max/mdev = 0.124/0.170/0.216/0.046 ms
+== fw-ext -> protect ==
+== gw-dmz -> protect ==
+== fw-int -> protect ==
+Режим МЭ переключён на: protect
+--- режим protect: тот же ping ---
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+
+--- 192.168.200.10 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1003ms
+

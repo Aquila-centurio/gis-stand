@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client tracepath -n 192.168.200.10
+ 1?: [LOCALHOST]                      pmtu 1500
+ 1:  198.51.100.1                                          0.097ms 
+ 1:  198.51.100.1                                          0.025ms 
+ 2:  192.168.50.4                                          0.049ms 
+ 3:  192.168.200.10                                        0.059ms reached
+     Resume: pmtu 1500 hops 3 back 3 

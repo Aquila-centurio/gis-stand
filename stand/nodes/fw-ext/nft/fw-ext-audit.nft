@@ -1,0 +1,23 @@
+flush ruleset
+
+table inet nat {
+    chain prerouting {
+        type nat hook prerouting priority -100;
+        ip daddr 198.51.100.1 tcp dport 80 dnat to 192.168.100.10:80
+        ip daddr 198.51.100.1 tcp dport 443 dnat to 192.168.100.10:443
+        ip daddr 198.51.100.1 udp dport 51820 dnat to 192.168.50.3:51820
+    }
+    chain postrouting {
+        type nat hook postrouting priority 100;
+        ip saddr 192.168.50.4 masquerade
+    }
+}
+
+table inet filter {
+    counter c_ext_fwd_audit {}
+
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+        counter name c_ext_fwd_audit
+    }
+}

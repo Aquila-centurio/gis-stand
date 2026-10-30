@@ -1,0 +1,1 @@
+aquila@aquila-brnhxx:~$ docker exec gis-ftp sh -c 'echo | timeout 3 nc -zv 192.168.200.10 5432'

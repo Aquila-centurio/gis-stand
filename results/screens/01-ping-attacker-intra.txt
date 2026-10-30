@@ -1,0 +1,6 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker ping -c3 -W1 192.168.200.10
+PING 192.168.200.10 (192.168.200.10) 56(84) bytes of data.
+
+--- 192.168.200.10 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2052ms
+
