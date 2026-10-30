@@ -1,0 +1,14 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'for i in 1 2 3; do sshpass -p WrongPass2026 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o NumberOfPasswordPrompts=1 archstaff1@localhost true; echo "попытка $i, неверный пароль: код ssh $?"; done; faillock --user archstaff1; sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o NumberOfPasswordPrompts=1 archstaff1@localhost "echo вход выполнен"; echo "попытка 4, верный пароль: код ssh $?"'
+archstaff1@localhost: Permission denied (publickey,password).
+попытка 1, неверный пароль: код ssh 255
+archstaff1@localhost: Permission denied (publickey,password).
+попытка 2, неверный пароль: код ssh 255
+archstaff1@localhost: Permission denied (publickey,password).
+попытка 3, неверный пароль: код ssh 255
+archstaff1:
+When                Type  Source                                           Valid
+2026-10-30 09:35:06 RHOST ::1                                                  V
+2026-10-30 09:35:10 RHOST ::1                                                  V
+2026-10-30 09:35:13 RHOST ::1                                                  V
+archstaff1@localhost: Permission denied (publickey,password).
+попытка 4, верный пароль: код ssh 255

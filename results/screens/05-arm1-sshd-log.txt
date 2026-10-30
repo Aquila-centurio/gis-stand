@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker logs gis-arm1 2>&1 | grep -E 'for archstaff1' | tail -6
+Accepted password for archstaff1 from ::1 port 47186 ssh2
+Failed password for archstaff1 from ::1 port 47212 ssh2
+Failed password for archstaff1 from ::1 port 47220 ssh2
+Failed password for archstaff1 from ::1 port 47234 ssh2
+Failed password for archstaff1 from ::1 port 52512 ssh2
+Accepted password for archstaff1 from ::1 port 52522 ssh2

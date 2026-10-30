@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR sysadmin@localhost id; echo "sysadmin: код ssh $?"; sshpass -p "$DC_ADMIN_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR Administrator@localhost id; echo "Administrator: код ssh $?"'; docker logs gis-arm1 2>&1 | grep -iE 'Accepted password for sysadmin|Administrator' | tail -3
+uid=1357001105(sysadmin) gid=1357000513(domain users) groups=1357000513(domain users),1357001103(admin)
+sysadmin: код ssh 0
+Administrator: код ssh 255
+Accepted password for sysadmin from ::1 port 47192 ssh2
+Failed password for Administrator from ::1 port 47206 ssh2
+Access denied for user Administrator by PAM account configuration [preauth]

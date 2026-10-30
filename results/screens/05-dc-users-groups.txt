@@ -1,0 +1,14 @@
+aquila@aquila-brnhxx:~$ docker exec gis-dc bash -c 'samba-tool user list | sort; echo "--- Admin:"; samba-tool group listmembers Admin; echo "--- Workgroup:"; samba-tool group listmembers Workgroup'
+Administrator
+Guest
+archhead
+archstaff1
+krbtgt
+secadmin
+sysadmin
+--- Admin:
+secadmin
+sysadmin
+--- Workgroup:
+archstaff1
+archhead

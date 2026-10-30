@@ -1,0 +1,8 @@
+# Сначала проверка блокировки (faillock), затем локальный пароль, затем домен (SSSD).
+# Неудача обоих фиксируется faillock (authfail), успех ведёт на pam_permit.
+auth	required			pam_faillock.so preauth
+auth	[success=3 default=ignore]	pam_unix.so nullok
+auth	[success=2 default=ignore]	pam_sss.so use_first_pass
+auth	[default=die]			pam_faillock.so authfail
+auth	requisite			pam_deny.so
+auth	required			pam_permit.so

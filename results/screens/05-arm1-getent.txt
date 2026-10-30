@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'getent passwd archstaff1 archhead sysadmin secadmin; id archstaff1; id sysadmin; getent group workgroup admin'
+archstaff1:*:1357001108:1357000513:Сотрудник архива:/home/archstaff1:/bin/bash
+archhead:*:1357001107:1357000513:Начальник архива:/home/archhead:/bin/bash
+sysadmin:*:1357001105:1357000513:Администратор отдела ИБ:/home/sysadmin:/bin/bash
+secadmin:*:1357001106:1357000513:Специалист отдела ЗИ:/home/secadmin:/bin/bash
+uid=1357001108(archstaff1) gid=1357000513(domain users) groups=1357000513(domain users),1357001104(workgroup)
+uid=1357001105(sysadmin) gid=1357000513(domain users) groups=1357000513(domain users),1357001103(admin)
+workgroup:*:1357001104:archhead,archstaff1
+admin:*:1357001103:secadmin,sysadmin

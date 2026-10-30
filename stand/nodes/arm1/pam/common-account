@@ -1,0 +1,9 @@
+# Успешный вход сбрасывает счётчик faillock.
+account	required			pam_faillock.so
+# pam_unix пропускает любого пользователя, видимого через NSS (и доменного тоже),
+# поэтому решение по доменным учёткам принимает отдельная обязательная строка pam_sss
+# (ad_access_filter в sssd.conf). Для локальных учёток pam_sss даёт user_unknown -> ignore.
+account	[success=1 new_authtok_reqd=done default=ignore]	pam_unix.so
+account	requisite			pam_deny.so
+account	required			pam_permit.so
+account	[default=bad success=ok user_unknown=ignore]	pam_sss.so

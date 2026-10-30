@@ -34,6 +34,10 @@ networks:
         - subnet: 192.168.200.0/24
           gateway: 192.168.200.254
 
+volumes:
+  dc-lib:
+  dc-etc:
+
 services:
   fw-ext:
     build: ./nodes/fw-ext
@@ -141,7 +145,12 @@ services:
     image: gis-dc
     container_name: gis-dc
     hostname: dc
+    domainname: gis.local
     cap_add: [NET_ADMIN]
+    env_file: ./secrets/stand.env
+    volumes:
+      - dc-lib:/var/lib/samba
+      - dc-etc:/etc/samba
     networks:
       intra:
         ipv4_address: 192.168.200.20
@@ -151,8 +160,10 @@ services:
     image: gis-arm1
     container_name: gis-arm1
     hostname: arm1
+    domainname: gis.local
     cap_add: [NET_ADMIN]
     env_file: ./secrets/stand.env
+    depends_on: [dc]
     networks:
       intra:
         ipv4_address: 192.168.200.31

@@ -1,0 +1,5 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'faillock --user archstaff1 --reset; faillock --user archstaff1; sshpass -p "$DOMAIN_USER_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o NumberOfPasswordPrompts=1 archstaff1@localhost "echo вход выполнен: \$(id -un)@\$(hostname)"; echo "после сброса, верный пароль: код ssh $?"'
+archstaff1:
+When                Type  Source                                           Valid
+вход выполнен: archstaff1@arm1
+после сброса, верный пароль: код ssh 0

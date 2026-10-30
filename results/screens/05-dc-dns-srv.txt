@@ -1,0 +1,6 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'cat /etc/resolv.conf; host -t SRV _ldap._tcp.gis.local; host -t SRV _kerberos._udp.gis.local; host dc.gis.local'
+search gis.local
+nameserver 192.168.200.20
+_ldap._tcp.gis.local has SRV record 0 100 389 dc.gis.local.
+_kerberos._udp.gis.local has SRV record 0 100 88 dc.gis.local.
+dc.gis.local has address 192.168.200.20

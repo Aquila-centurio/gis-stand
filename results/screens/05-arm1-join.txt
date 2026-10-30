@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'adcli testjoin --domain=gis.local; klist -k /etc/krb5.keytab | awk "NR>3{print \$2}" | sort -u'; docker exec gis-dc samba-tool computer list
+Sucessfully validated join to domain gis.local
+ARM1$@GIS.LOCAL
+RestrictedKrbHost/ARM1@GIS.LOCAL
+RestrictedKrbHost/arm1.gis.local@GIS.LOCAL
+host/ARM1@GIS.LOCAL
+host/arm1.gis.local@GIS.LOCAL
+ARM1$
+DC$

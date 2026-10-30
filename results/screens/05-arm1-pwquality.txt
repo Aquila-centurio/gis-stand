@@ -1,0 +1,28 @@
+aquila@aquila-brnhxx:~$ docker exec gis-arm1 bash -c 'for p in qwerty123 archive2026 Arm1armuser; do echo "--- пароль $p"; echo "armuser:$p" | chpasswd 2>&1 | grep -v "^chpasswd: (line"; done; grep -v "^#" /etc/security/pwquality.conf'
+--- пароль qwerty123
+BAD PASSWORD: The password contains less than 1 uppercase letters
+BAD PASSWORD: The password contains less than 1 uppercase letters
+BAD PASSWORD: The password contains less than 1 uppercase letters
+chpasswd: (user armuser) pam_chauthtok() failed, error:
+Have exhausted maximum number of retries for service
+--- пароль archive2026
+BAD PASSWORD: The password contains less than 1 uppercase letters
+BAD PASSWORD: The password contains less than 1 uppercase letters
+BAD PASSWORD: The password contains less than 1 uppercase letters
+chpasswd: (user armuser) pam_chauthtok() failed, error:
+Have exhausted maximum number of retries for service
+--- пароль Arm1armuser
+BAD PASSWORD: The password contains the user name in some form
+BAD PASSWORD: The password contains the user name in some form
+BAD PASSWORD: The password contains the user name in some form
+chpasswd: (user armuser) pam_chauthtok() failed, error:
+Have exhausted maximum number of retries for service
+minlen = 10
+dcredit = -1
+ucredit = -1
+lcredit = -1
+difok = 3
+maxrepeat = 3
+dictcheck = 1
+usercheck = 1
+enforce_for_root

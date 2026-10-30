@@ -1,0 +1,8 @@
+aquila@aquila-brnhxx:~$ docker exec gis-dc samba-tool domain info 127.0.0.1
+Forest           : gis.local
+Domain           : gis.local
+Netbios domain   : GIS
+DC name          : dc.gis.local
+DC netbios name  : DC
+Server site      : Default-First-Site-Name
+Client site      : Default-First-Site-Name
