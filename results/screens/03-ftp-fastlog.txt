@@ -1,0 +1,5 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz cat /var/log/suricata/fast.log
+10/30/2026-08:41:18.322534  [**] [1:1000008:1] FTP: popytka vhoda, komanda USER [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.200.10:49434 -> 192.168.100.11:21
+10/30/2026-08:41:18.322534  [**] [1:1000009:1] FTP: popytka vhoda, komanda PASS [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.200.10:49434 -> 192.168.100.11:21
+10/30/2026-08:41:18.322531  [**] [1:1000008:1] FTP: popytka vhoda, komanda USER [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.200.10:49434 -> 192.168.100.11:21
+10/30/2026-08:41:18.322531  [**] [1:1000009:1] FTP: popytka vhoda, komanda PASS [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.200.10:49434 -> 192.168.100.11:21

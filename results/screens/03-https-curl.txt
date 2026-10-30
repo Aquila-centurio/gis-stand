@@ -1,0 +1,2 @@
+aquila@aquila-brnhxx:~$ docker exec gis-client curl -k -sS -m5 -o /dev/null -w 'HTTP код: %{http_code}\n' https://198.51.100.1/
+HTTP код: 200

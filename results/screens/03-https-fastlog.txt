@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz cat /var/log/suricata/fast.log
+10/30/2026-08:37:06.220857  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222
+10/30/2026-08:37:06.220862  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222
+10/30/2026-08:37:06.224159  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222
+10/30/2026-08:37:06.224248  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222
+10/30/2026-08:37:06.224703  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222
+10/30/2026-08:37:06.225029  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:34222

@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker nmap -sS -Pn -T4 -p 1-200 192.168.100.10
+Starting Nmap 7.95 ( https://nmap.org ) at 2026-10-30 08:40 UTC
+Nmap scan report for 192.168.100.10
+Host is up (0.000089s latency).
+Not shown: 199 closed tcp ports (reset)
+PORT   STATE SERVICE
+80/tcp open  http
+
+Nmap done: 1 IP address (1 host up) scanned in 13.16 seconds

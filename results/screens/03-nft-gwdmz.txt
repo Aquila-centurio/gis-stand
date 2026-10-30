@@ -1,0 +1,32 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz nft list ruleset
+table inet filter {
+	counter c_dmz_invalid {
+		packets 0 bytes 0
+	}
+
+	counter c_dmz_to_web {
+		packets 2 bytes 120
+	}
+
+	counter c_dmz_to_ftp {
+		packets 6 bytes 360
+	}
+
+	counter c_dmz_web_to_db {
+		packets 1 bytes 60
+	}
+
+	counter c_dmz_fwd_drop {
+		packets 0 bytes 0
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid counter name "c_dmz_invalid" drop
+		ip daddr 192.168.100.10 tcp dport { 80, 443 } counter name "c_dmz_to_web" accept
+		ip saddr 192.168.200.0/24 ip daddr 192.168.100.11 tcp dport { 21, 21100-21110 } counter name "c_dmz_to_ftp" accept
+		ip saddr 192.168.100.10 ip daddr 192.168.200.10 tcp dport 5432 counter name "c_dmz_web_to_db" accept
+		counter name "c_dmz_fwd_drop" drop
+	}
+}

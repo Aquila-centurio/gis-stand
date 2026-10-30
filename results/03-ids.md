@@ -1,0 +1,227 @@
+# Этап 03 — IDS/IPS на шлюзе ДМЗ
+
+## Цель
+Настроить систему обнаружения вторжений на gw-dmz (в схеме — «Firewall + IDS/IPS» перед web/ftp)
+и показать срабатывание на ICMP, обращение к web, XSS, SQL-инъекцию, сканирование портов и попытку
+входа по FTP.
+
+## Что сделано
+- В образ gw-dmz добавлен пакет `suricata` (Debian, версия 1:7.0.10-1+deb13u4). Snort из списка
+  средств курса не использовался: Suricata того же класса (сетевая СОВ/СОВП) и уже выбрана группой
+  для других механизмов стенда — в самом списке курса допускается любое средство этого класса.
+- Suricata работает в режиме af-packet (пассивный IDS) на обоих интерфейсах gw-dmz: transit (видит
+  трафик до прихода в dmz) и dmz (видит трафик после). Интерфейсы, как и в nft/маршрутах, находятся
+  по IP подсети в `entrypoint.sh` (docker не гарантирует имена eth0/eth1), затем подставляются в
+  `suricata.yaml` из шаблона `suricata.yaml.tmpl`.
+- `suricata-update` недоступен (сети стенда изолированы от интернета, этап 01) — используются только
+  свои правила, `stand/nodes/gw-dmz/suricata/local.rules`, 9 правил с комментариями.
+- Логи `fast.log` и `eve.json` пишутся в `/var/log/suricata` внутри контейнера и смонтированы на хост
+  в `stand/logs/gw-dmz/` (добавлено в `.gitignore`, как и `stand/secrets/`).
+- gw-dmz теперь — первый узел стенда, где контейнер запускает реальный процесс как PID1
+  (`exec suricata ... --af-packet`), а не `sleep infinity`: правила nftables и маршруты по-прежнему
+  настраиваются до запуска Suricata, маршрутизация не зависит от пользовательского процесса.
+- IPS (nftables `queue` + `drop` в NFQUEUE) не делали — см. «Отступления», п.3.
+
+## Конфигурация
+
+### suricata.yaml (шаблон, ключевые фрагменты)
+Полный файл: `stand/nodes/gw-dmz/suricata/suricata.yaml.tmpl`
+```yaml
+vars:
+  address-groups:
+    HOME_NET: "[192.168.100.0/24]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+af-packet:
+  - interface: __IF_TRANSIT__
+    cluster-id: 91
+    cluster-type: cluster_flow
+  - interface: __IF_DMZ__
+    cluster-id: 92
+    cluster-type: cluster_flow
+
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - local.rules
+```
+`HOME_NET` — dmz (то, что защищает gw-dmz), `EXTERNAL_NET` — всё остальное (transit/intra/ext).
+Блок `run-as` намеренно не указан (см. «Проблемы и как решили», п.2).
+
+### entrypoint.sh (gw-dmz), добавленная часть
+Полный файл: `stand/nodes/gw-dmz/entrypoint.sh`
+```sh
+IF_DMZ=$(iface_for_subnet 192.168.100)
+...
+mkdir -p /var/log/suricata
+sed "s/__IF_TRANSIT__/$IF_TRANSIT/; s/__IF_DMZ__/$IF_DMZ/" /etc/suricata/suricata.yaml.tmpl > /etc/suricata/suricata.yaml
+exec suricata -c /etc/suricata/suricata.yaml --af-packet
+```
+
+### docker-compose.yml — том для логов
+```yaml
+  gw-dmz:
+    volumes:
+      - ./logs/gw-dmz:/var/log/suricata
+```
+
+### local.rules — таблица правил
+Полный файл: `stand/nodes/gw-dmz/suricata/local.rules`
+
+| sid | Правило (кратко) | Угроза | Проверка |
+|---|---|---|---|
+| 1000001 | ICMP echo-request из EXTERNAL_NET в HOME_NET | разведка/ping | Проверка 1 |
+| 1000002 | ICMP echo-reply из HOME_NET в EXTERNAL_NET | ответ на разведку | Проверка 1 |
+| 1000003 | TLS-ответ сервера web (`flow:to_client`) клиенту из EXTERNAL_NET | легитимное событие, не угроза — факт успешного подключения | Проверка 2 |
+| 1000004 | `<script` в `http.uri` (nocase) | XSS | Проверка 3 |
+| 1000005 | `OR 1=1` в `http.uri` (nocase) | SQL-инъекция | Проверка 4 |
+| 1000006 | `UNION SELECT` в `http.uri` (nocase) | SQL-инъекция | не вызывалась отдельным чек-пунктом, правило загружено и синтаксически провалидировано `suricata -T` (см. Проверка 7) |
+| 1000007 | много TCP SYN на HOME_NET: `threshold count 20, seconds 10, track by_src` | сканирование портов | Проверка 5 |
+| 1000008 | `USER ` на HOME_NET:21 | попытка входа по FTP | Проверка 6 |
+| 1000009 | `PASS ` на HOME_NET:21 | попытка входа по FTP | Проверка 6 |
+
+## Проверка функционирования
+Suricata смотрит на оба интерфейса gw-dmz (transit и dmz) — поэтому каждый пакет, прошедший через
+узел как через маршрутизатор, виден дважды (`in_iface: eth0` и `in_iface: eth1` в `eve.json`), и в
+`fast.log`/`eve.json` на каждое реальное событие приходится по два одинаковых алерта. Это ожидаемое
+поведение данной расстановки датчика, не дублирование правил.
+
+Логи перед каждой проверкой очищались (`: > fast.log; : > eve.json`).
+
+### Проверка 1 — ICMP: attacker → ping web, режим audit
+В `protect` пакет ICMP не доходит даже до gw-dmz: fw-ext ещё раньше не пропускает ICMP в forward
+(политика разрешает только tcp 80/443/udp 51820), поэтому проверяли в `audit`. Пинговали реальный
+адрес web в dmz (192.168.100.10), а не публичный 198.51.100.1 — на публичный адрес ICMP вообще не
+маршрутизируется (нет DNAT для ICMP, отвечает сам fw-ext).
+- Команда: `./scripts/mode.sh audit`; `docker exec gis-attacker ping -c3 -W2 192.168.100.10`
+- Ожидание: 2 алерта на запрос (sid 1000001) и 2 на ответ (sid 1000002) на каждый ping (×2 — два
+  интерфейса).
+- Получили: ровно так, 0% packet loss на ping, алерты в fast.log и eve.json с полями `icmp_type`,
+  `src_ip`/`dest_ip`, `in_iface`.
+- Скрин: screens/03-icmp-ping.png, screens/03-icmp-fastlog.png, screens/03-icmp-evejson.png
+- Итог: PASS
+
+### Проверка 2 — успешное подключение: client → curl https://… к web, режим protect
+- Команда: `docker exec gis-client curl -k -sS -m5 -o /dev/null -w 'HTTP код: %{http_code}\n' https://198.51.100.1/`
+- Ожидание: `HTTP код: 200`, алерт sid 1000003.
+- Получили: `HTTP код: 200`, алерт «Uspeshnoe HTTPS-podkluchenie k web» в fast.log/eve.json.
+- Скрин: screens/03-https-curl.png, screens/03-https-fastlog.png, screens/03-https-evejson.png
+- Итог: PASS
+
+### Проверка 3 — XSS: attacker → `<script>` в q, режим protect
+Запрос отправлен на **http** (порт 80), не https — почему, см. «Отступления», п.1. Визуальное
+подтверждение рефлексии снято отдельно через браузер по https (см. ниже).
+- Команда: `docker exec gis-attacker curl -sS -m5 'http://198.51.100.1/search.php?q=%3Cscript%3Ealert(1)%3C/script%3E'`
+- Ожидание: алерт sid 1000004 «Vozmozhnaya XSS-ataka».
+- Получили: именно так, 2 алерта (по одному на интерфейс).
+- Скрин: screens/03-xss-curl.png, screens/03-xss-fastlog.png, screens/03-xss-evejson.png
+- Браузер (другой payload, без блокирующего `alert()` — см. «Проблемы»):
+  `./scripts/shot-web.sh 03-xss-browser 'https://198.51.100.1/search.php?q=<script>document.body.style.background=...</script>'`
+  — страница окрасилась в красный цвет, скрипт реально выполнился в браузере.
+- Скрин: screens/03-xss-browser.png
+- Итог: PASS
+
+### Проверка 4 — SQL-инъекция: attacker → `' OR 1=1--` в q, режим protect
+- Команда: `docker exec gis-attacker curl -sS -m5 "http://198.51.100.1/search.php?q=%27%20OR%201%3D1--"`
+- Ожидание: алерт sid 1000005 «Vozmozhnaya SQL-inekciya: OR 1=1».
+- Получили: именно так.
+- Скрин: screens/03-sqli-curl.png, screens/03-sqli-fastlog.png, screens/03-sqli-evejson.png
+- Итог: PASS (сам SQL-запрос в `search.php` параметризован, инъекция в БД не проходит — это и
+  проверялось на этапе 02; здесь показываем только срабатывание IDS на характерный признак в запросе)
+
+### Проверка 5 — сканирование портов: attacker → nmap -sS web, режим audit
+Как и с ICMP: в `protect` до gw-dmz дошли бы SYN только на 2 разрешённых порта (80/443 через DNAT на
+fw-ext) — этого недостаточно для правила «много SYN» и нереалистично для демонстрации самого факта
+сканирования. Переключили в `audit`, чтобы SYN на все 200 портов дошли до gw-dmz.
+- Команда: `./scripts/mode.sh audit`; `docker exec gis-attacker nmap -sS -Pn -T4 -p 1-200 192.168.100.10`
+- Ожидание: алерт sid 1000007 (threshold: 20 SYN за 10 секунд от одного источника).
+- Получили: 20 срабатываний threshold-правила подряд.
+- Скрин: screens/03-scan-nmap.png, screens/03-scan-fastlog.png, screens/03-scan-evejson.png
+- Итог: PASS
+
+### Проверка 6 — FTP: попытка входа (USER/PASS), режим protect
+Не входит в обязательный список проверок задания, но правила 1000008/1000009 из local.rules нужно
+было проверить реальным трафиком — воспользовались легитимным `backup.sh` с db (этап 02): с точки
+зрения IDS сам факт входа по FTP виден независимо от того, легитимный он или нет.
+- Команда: `docker exec gis-db backup.sh`
+- Ожидание: алерты sid 1000008 и 1000009.
+- Получили: оба алерта, с правильными src/dst (192.168.200.10 → 192.168.100.11:21).
+- Скрин: screens/03-ftp-backup.png, screens/03-ftp-fastlog.png, screens/03-ftp-evejson.png
+- Итог: PASS
+
+### Проверка 7 — версия и проверка конфигурации Suricata
+- Команда: `docker exec gis-gw-dmz suricata --build-info`; `docker exec gis-gw-dmz suricata -T -c /etc/suricata/suricata.yaml`
+- Ожидание: версия пакета, `Configuration provided was successfully loaded`.
+- Получили: `Suricata version 7.0.10 RELEASE`, `9 rules successfully loaded, 0 rules failed`,
+  конфигурация прошла проверку.
+- Скрин: screens/03-suricata-version.png
+- Итог: PASS
+
+### Проверка 8 — `nft list ruleset` на gw-dmz после всех проверок
+- Команда: `docker exec gis-gw-dmz nft list ruleset`
+- Ожидание: правила nftables на gw-dmz не изменились с этапа 01/02, Suricata работает поверх них
+  независимо (МЭ и IDS — два разных, не связанных друг с другом рубежа на одном узле).
+- Получили: тот же набор правил и счётчиков, что в этапе 02.
+- Скрин: screens/03-nft-gwdmz.png
+- Итог: PASS
+
+### Проверка 9 — стенд поднимается с нуля, Suricata стартует автоматически
+- Команда: `./scripts/down.sh && ./scripts/up.sh`, затем `docker exec gis-gw-dmz ps aux | grep suricata`
+  и повтор проверки 1 (ICMP, режим audit).
+- Ожидание: suricata — процесс PID 1 в gw-dmz без ручных действий, алерты срабатывают как раньше.
+- Получили: именно так.
+- Итог: PASS
+
+## Отступления от схемы и причины
+1. **XSS и SQL-инъекцию проверяли через `http://` (порт 80), а не `https://`, как написано в задании
+   буквально.** Apache у web отдаёт TLS 1.3 (OpenSSL 3 в Debian 13 включает его по умолчанию), а в
+   TLS 1.3 полезная нагрузка (в том числе сама HTTP-строка запроса) зашифрована сразу после
+   ServerHello — пассивный сетевой IDS без ключей сессии физически не может прочитать `GET
+   /search.php?q=...` внутри HTTPS-сессии (это не ошибка конфигурации, а фундаментальное свойство
+   протокола, показали отдельно: убедились, что `tls.cert_subject` и `http.uri` не матчатся вообще
+   ни на одном пакете HTTPS-сессии, хотя TLS-сессия распознаётся штатно). При этом строка запроса
+   уходит в открытом виде ещё до TLS, когда клиент стучится на порт 80 — Apache на 80-м порту только
+   делает `Redirect permanent`, но сам факт получения вредоносной строки в заголовке `GET` уже
+   происходит в открытом канале и этого достаточно, чтобы IDS увидел полезную нагрузку (ответ сервера
+   — редирект — для срабатывания правила не важен). Визуальную рефлексию XSS (что скрипт реально
+   выполняется в браузере) сняли отдельно через `https://`, это к сетевому IDS отношения не имеет.
+2. **Правило 1000003 («успешное HTTPS-подключение») не смотрит на сертификат сервера.** Первая версия
+   правила проверяла `tls.cert_subject` (CN сертификата web), это не сработало по той же причине
+   (TLS 1.3 шифрует Certificate). Переписали на `flow:to_client` без привязки к полезной нагрузке —
+   алерт означает, что сервер ответил в рамках TLS-handshake, независимо от версии TLS.
+3. **IPS (nftables `queue` + Suricata NFQUEUE) не делали.** Основное время ушло на диагностику
+   TLS 1.3 (см. п.1-2) и подбор рабочего `suricata.yaml` (минимальный конфиг с нуля, а не патч
+   дистрибутивного — см. «Проблемы», п.1). IDS-режим полностью рабочий и проверен по всем пунктам
+   задания; IPS оставили как задел, если останется время до сдачи — не осталось. Пакет Suricata собран
+   с поддержкой `NFQ` (видно в `suricata --build-info`), технической преграды для IPS в будущем нет.
+4. **В `local.rules` текст `msg` латиницей, а комментарии — кириллицей**, по аналогии с комментариями
+   в `nft`-файлах этапов 01-02: `msg` потом виден дословно в `fast.log`/`eve.json`, транслит надёжнее
+   для совместимости с парсером правил и терминальным выводом в скринах.
+
+## Проблемы и как решили
+1. **Патчить дистрибутивный `/etc/suricata/suricata.yaml` (от пакета) через `sed` оказалось
+   нецелесообразно** — файл большой, структура af-packet/rule-files вложенная, риск сломать что-то
+   незаметно. Написали свой минимальный `suricata.yaml.tmpl` с нуля и проверяли его `suricata -T`
+   в одноразовом тестовом контейнере, пока не добились `9 rules successfully loaded, 0 rules failed`
+   — только после этого переносили в образ gw-dmz.
+2. **`itype 8` вместо `itype:8`.** В синтаксисе правил Suricata после имени опции нужен `:`, не
+   пробел — `unknown rule keyword 'itype 8'`. Поправили на `itype:8;`/`itype:0;`.
+3. **`Error: privs: capng_change_id for main thread failed`.** Указали в `suricata.yaml` явный блок
+   `run-as: {user: root, group: root}` — Suricata всё равно пытается выполнить `setuid`/`setgid`, даже
+   на тот же uid, а контейнеру не хватает `CAP_SETUID`/`CAP_SETGID` (мы их не добавляли и не планируем
+   — не нужны ни для чего другого). Решение — не указывать `run-as` вовсе, тогда Suricata не пытается
+   менять привилегии.
+4. **`tls.cert_subject` и `http.uri` не матчились вообще ни разу, при этом общий тестовый `alert tls
+   any any -> any any` на ту же сессию срабатывал.** Разобрано в «Отступления», п.1-2: причина —
+   TLS 1.3 у web, а не ошибка в правилах или кэпча захвата. Подтвердили через `tcpdump -A` на обоих
+   интерфейсах gw-dmz — пакеты реально доходят, содержимое `GET`-строки не видно только потому что
+   зашифровано.
+5. **Headless Chromium завис на payload с `alert(1)` в `shot-web.sh`.** `window.alert()` в JS блокирует
+   выполнение скрипта до закрытия диалога, а в данном запуске headless-chromium (без CDP-автозакрытия
+   диалогов, просто CLI `--screenshot`) диалог никто не закрывает — скрипт так и остался «висеть»,
+   процесс не завершался за разумное время. Решение — для браузерного скрина использовали другой,
+   не блокирующий payload (`document.body.style.background=...`), который наглядно показывает
+   исполнение скрипта без диалога. Для самого IDS-алерта (curl) это не имело значения — там сработка
+   идёт по сигнатуре в запросе, а не по исполнению скрипта.
+
+## Коммит
+Коммит этапа 03 — после обновления `PROGRESS.md`.

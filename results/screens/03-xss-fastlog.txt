@@ -1,0 +1,3 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz cat /var/log/suricata/fast.log
+10/30/2026-08:38:59.421579  [**] [1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:57030 -> 192.168.100.10:80
+10/30/2026-08:38:59.421584  [**] [1:1000004:1] Vozmozhnaya XSS-ataka: <script> v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:57030 -> 192.168.100.10:80

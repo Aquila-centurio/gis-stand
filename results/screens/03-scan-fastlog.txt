@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz sh -c 'grep 1000007 /var/log/suricata/fast.log | head -6'
+10/30/2026-08:40:24.054497  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:143
+10/30/2026-08:40:24.055514  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:168
+10/30/2026-08:40:24.056519  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:149
+10/30/2026-08:40:24.057521  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:115
+10/30/2026-08:40:24.058471  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:26
+10/30/2026-08:40:24.059425  [**] [1:1000007:1] Vozmozhnoe skanirovanie portov (mnogo SYN za korotkoe vremya) [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:63793 -> 192.168.100.10:93

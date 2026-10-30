@@ -1,0 +1,9 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker ping -c3 -W2 192.168.100.10
+PING 192.168.100.10 (192.168.100.10) 56(84) bytes of data.
+64 bytes from 192.168.100.10: icmp_seq=1 ttl=62 time=0.302 ms
+64 bytes from 192.168.100.10: icmp_seq=2 ttl=62 time=0.159 ms
+64 bytes from 192.168.100.10: icmp_seq=3 ttl=62 time=0.149 ms
+
+--- 192.168.100.10 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2029ms
+rtt min/avg/max/mdev = 0.149/0.203/0.302/0.069 ms

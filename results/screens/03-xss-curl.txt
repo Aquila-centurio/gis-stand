@@ -1,0 +1,10 @@
+aquila@aquila-brnhxx:~$ docker exec gis-attacker curl -sS -m5 'http://198.51.100.1/search.php?q=%3Cscript%3Ealert(1)%3C/script%3E'
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<title>301 Moved Permanently</title>
+</head><body>
+<h1>Moved Permanently</h1>
+<p>The document has moved <a href="https://198.51.100.1/search.php?q=%3Cscript%3Ealert(1)%3C/script%3E">here</a>.</p>
+<hr>
+<address>Apache/2.4.69 (Debian) Server at 198.51.100.1 Port 80</address>
+</body></html>

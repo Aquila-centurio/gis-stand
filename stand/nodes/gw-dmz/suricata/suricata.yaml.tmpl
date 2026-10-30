@@ -1,0 +1,74 @@
+%YAML 1.1
+---
+# Шаблон: __IF_TRANSIT__/__IF_DMZ__ подставляются entrypoint.sh реальными именами интерфейсов
+# (docker не гарантирует eth0/eth1, интерфейс ищем по IP подсети, как и в nft/маршрутах).
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.100.0/24]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+default-log-dir: /var/log/suricata/
+
+stats:
+  enabled: no
+
+outputs:
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            metadata: yes
+            tagged-packets: yes
+        - tls:
+            extended: yes
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+
+# Два интерфейса: видим трафик и со стороны transit (до web/ftp), и со стороны dmz (после).
+af-packet:
+  - interface: __IF_TRANSIT__
+    threads: 1
+    cluster-id: 91
+    cluster-type: cluster_flow
+    defrag: yes
+  - interface: __IF_DMZ__
+    threads: 1
+    cluster-id: 92
+    cluster-type: cluster_flow
+    defrag: yes
+
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+    http:
+      enabled: yes
+    ftp:
+      enabled: yes
+
+# suricata-update недоступен (сети стенда изолированы от интернета) — только свои правила.
+default-rule-path: /etc/suricata/rules
+rule-files:
+  - local.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+threshold-file: /etc/suricata/threshold.config
+
+host-mode: auto
+
+unix-command:
+  enabled: no
+
+magic-file: /usr/share/file/magic.mgc

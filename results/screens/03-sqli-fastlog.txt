@@ -1,0 +1,4 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz cat /var/log/suricata/fast.log
+10/30/2026-08:39:50.718414  [**] [1:1000005:1] Vozmozhnaya SQL-inekciya: OR 1=1 v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:48606 -> 192.168.100.10:80
+10/30/2026-08:39:50.718419  [**] [1:1000005:1] Vozmozhnaya SQL-inekciya: OR 1=1 v HTTP-zaprose [**] [Classification: (null)] [Priority: 3] {TCP} 198.51.100.66:48606 -> 192.168.100.10:80
+10/30/2026-08:39:54.960864  [**] [1:1000003:2] Uspeshnoe HTTPS-podkluchenie k web (otvet servera v TLS-handshake) [**] [Classification: (null)] [Priority: 3] {TCP} 192.168.100.10:443 -> 198.51.100.10:36208

@@ -1,0 +1,13 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz cat /var/log/suricata/fast.log
+10/30/2026-08:36:34.435456  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:34.435553  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:34.435588  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0
+10/30/2026-08:36:34.435626  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0
+10/30/2026-08:36:35.440477  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:35.440462  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:35.440518  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0
+10/30/2026-08:36:35.440513  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0
+10/30/2026-08:36:36.464442  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:36.464456  [**] [1:1000001:1] ICMP echo-request snaruzhi v DMZ [**] [Classification: (null)] [Priority: 3] {ICMP} 198.51.100.66:8 -> 192.168.100.10:0
+10/30/2026-08:36:36.464493  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0
+10/30/2026-08:36:36.464489  [**] [1:1000002:1] ICMP echo-reply iz DMZ naruzhu [**] [Classification: (null)] [Priority: 3] {ICMP} 192.168.100.10:0 -> 198.51.100.66:0

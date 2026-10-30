@@ -1,0 +1,7 @@
+aquila@aquila-brnhxx:~$ docker exec gis-gw-dmz suricata --build-info 2>&1 | head -3; echo; docker exec gis-gw-dmz suricata -T -c /etc/suricata/suricata.yaml
+This is Suricata version 7.0.10 RELEASE
+Features: NFQ PCAP_SET_BUFF AF_PACKET HAVE_PACKET_FANOUT LIBCAP_NG LIBNET1.1 HAVE_HTP_URI_NORMALIZE_HOOK PCRE_JIT HAVE_NSS HTTP2_DECOMPRESSION HAVE_LUA HAVE_JA3 HAVE_JA4 HAVE_LUAJIT HAVE_LIBJANSSON TLS TLS_C11 MAGIC RUST POPCNT64 
+SIMD support: SSE_4_2 SSE_4_1 SSE_3 SSE_2 
+
+i: suricata: This is Suricata version 7.0.10 RELEASE running in SYSTEM mode
+i: suricata: Configuration provided was successfully loaded. Exiting.

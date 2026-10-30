@@ -57,6 +57,8 @@ services:
     cap_add: [NET_ADMIN]
     sysctls:
       net.ipv4.ip_forward: 1
+    volumes:
+      - ./logs/gw-dmz:/var/log/suricata
     networks:
       transit:
         ipv4_address: 192.168.50.2
